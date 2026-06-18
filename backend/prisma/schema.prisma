@@ -5,9 +5,8 @@
 
 datasource db {
   provider = "postgresql"
-  // Rimuovi completamente la riga 'url = ...'
+  url      = env("DATABASE_URL")
 }
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -15,11 +14,13 @@ generator client {
 // ... i modelli User, Set, Card, ecc. rimangono ugual
 model User {
   id        String     @id @default(uuid())
-  email     String     @unique
   name      String?
+  email     String     @unique
+  password  String
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-  collection UserCard[] 
+
+  userCards UserCard[]
 }
 
 model Set {
