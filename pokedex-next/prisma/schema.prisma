@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+datasource db {
+  provider = "postgresql"
+  // Rimuovi completamente la riga 'url = ...'
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ... i modelli User, Set, Card, ecc. rimangono ugual
+model User {
+  id        String     @id @default(uuid())
+  name      String?
+  email     String     @unique
+  password  String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // QUESTA è la riga magica che risolve l'errore:
+  userCards UserCard[]
+}
+
+model Set {
+  id          String   @id 
+  name        String
+  series      String   
+  totalCards  Int      
+  releaseDate String   
+  logoUrl     String?  
+  symbolUrl   String?  
+  cards       Card[]   
+}
+
+model Card {
+  id         String     @id 
+  name       String     
+  supertype  String     
+  rarity     String?    
+  priceUsd   Float?     
+  imageUrl   String     
+  setId      String     
+  set        Set        @relation(fields: [setId], references: [id])
+  userCards  UserCard[] 
+}
+
+model UserCard {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1) 
+  createdAt DateTime @default(now())
+
+  @@unique([userId, cardId]) 
+}
