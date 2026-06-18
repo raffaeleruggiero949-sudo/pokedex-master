@@ -34,7 +34,8 @@ model Set {
 model Card {
   id         String     @id 
   name       String     
-  supertype  String     
+  supertype  String  
+  subtypes   String[]   
   rarity     String?
   priceUsd   Float?     
   imageUrl   String     
