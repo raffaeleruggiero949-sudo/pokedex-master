@@ -1,17 +1,15 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-generator client {
-  provider = "prisma-client-js"
-}
 
-// ... i modelli User, Set, Card, ecc. rimangono ugual
 model User {
   id        String     @id @default(uuid())
   name      String?
@@ -38,7 +36,7 @@ model Card {
   id         String     @id 
   name       String     
   supertype  String     
-  rarity     String?    
+  rarity     String?
   priceUsd   Float?     
   imageUrl   String     
   setId      String     
