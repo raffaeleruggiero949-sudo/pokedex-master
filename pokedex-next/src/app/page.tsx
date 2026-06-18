@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -30,12 +30,11 @@ export default function Home() {
 
   useEffect(() => {
     setLoading(true);
-    // Chiamata interna relativa! Niente più localhost:3000 esplicito
-    fetch(`/api/cards?page=${currentPage}&limit=8`)
+    fetch(`http://localhost:3000/api/cards?page=${currentPage}&limit=8`)
       .then((response) => response.json())
       .then((json) => {
-        setCards(json.data || []);
-        setMeta(json.meta || null);
+        setCards(json.data);
+        setMeta(json.meta);
         setLoading(false);
       })
       .catch((error) => console.error("Errore nel caricamento:", error));
@@ -57,11 +56,16 @@ export default function Home() {
         </header>
         <div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 mb-10 h-24 animate-pulse"></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {[...Array(4)].map((_, index) => (
-            <div key={index} className="bg-gray-800 rounded-2xl p-4 h-[420px] border border-gray-700 animate-pulse">
+          {[...Array(8)].map((_, index) => (
+            <div key={index} className="bg-gray-800 rounded-2xl p-4 shadow-lg border border-gray-700 flex flex-col justify-between h-[420px] animate-pulse">
               <div className="w-full h-64 bg-gray-700 rounded-xl mb-4"></div>
-              <div className="h-6 bg-gray-700 rounded-md w-3/4 mb-2"></div>
-              <div className="h-4 bg-gray-700 rounded-md w-1/2"></div>
+              <div className="space-y-3">
+                <div className="h-6 bg-gray-700 rounded-md w-3/4"></div>
+                <div className="flex justify-between">
+                  <div className="h-4 bg-gray-700 rounded-md w-1/3"></div>
+                  <div className="h-4 bg-gray-700 rounded-md w-1/4"></div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -85,11 +89,10 @@ export default function Home() {
           <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-yellow-500 tracking-tight">
             Pokédex Master
           </h1>
-          <p className="text-gray-400 mt-2">L'intera collezione unificata in Next.js.</p>
+          <p className="text-gray-400 mt-2">Gestisci e filtra la tua collezione in tempo reale.</p>
         </div>
       </header>
 
-      {/* FILTRI */}
       <div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 mb-10 flex flex-col md:flex-row gap-4 items-center justify-between shadow-md">
         <div className="relative w-full md:w-1/2">
           <input
@@ -124,10 +127,10 @@ export default function Home() {
         </div>
       )}
 
-      {/* GRIGLIA */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-12">
         {filteredCards.map((card) => (
-          <Link href={`/card/${card.id}`} key={card.id}>
+          {/* NOTA: Ho aggiornato il link alla rotta /cards/[id] tipica di Next.js */}
+          <Link href={`/cards/${card.id}`} key={card.id}>
             <div className="bg-gray-800 rounded-2xl p-4 shadow-lg border border-gray-700 transition-all duration-300 hover:-translate-y-2 hover:shadow-red-500/20 hover:border-red-500/50 cursor-pointer h-full flex flex-col justify-between">
               <div>
                 <img src={card.imageUrl} alt={card.name} className="w-full h-auto rounded-xl drop-shadow-md mb-4" />
@@ -148,26 +151,31 @@ export default function Home() {
         ))}
       </div>
 
-      {/* PAGINAZIONE */}
       {meta && meta.totalPages > 1 && (
         <div className="mt-auto flex justify-center items-center space-x-6 bg-gray-900/50 p-4 rounded-full border border-gray-800 self-center">
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
-              currentPage === 1 ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500 text-white'
+              currentPage === 1 
+                ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
+                : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/20'
             }`}
           >
             &larr; Precedente
           </button>
+          
           <span className="text-gray-400 font-medium">
             Pagina <strong className="text-white">{meta.currentPage}</strong> di {meta.totalPages}
           </span>
+          
           <button
             onClick={() => setCurrentPage((prev) => Math.min(prev + 1, meta.totalPages))}
             disabled={currentPage === meta.totalPages}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
-              currentPage === meta.totalPages ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500 text-white'
+              currentPage === meta.totalPages 
+                ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
+                : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/20'
             }`}
           >
             Successiva &rarr;

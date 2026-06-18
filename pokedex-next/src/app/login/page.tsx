@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -11,9 +11,9 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (isRegister) {
-      // LOGICA DI REGISTRAZIONE
+      // LOGICA DI REGISTRAZIONE VERA E PROPRIA
       try {
         const response = await fetch('/api/auth/register', {
           method: 'POST',
@@ -25,10 +25,9 @@ export default function Login() {
 
         if (response.ok) {
           alert('Allenatore registrato con successo! Ora puoi accedere.');
-          setIsRegister(false); // Riporta automaticamente l'utente alla schermata di Login
-          setPassword(''); // Svuota la password per sicurezza
+          setIsRegister(false); // Torna al login
+          setPassword(''); // Pulisce la password
         } else {
-          // Mostra l'errore generato dal nostro backend (es. "Email già usata")
           alert(data.error || 'Errore durante la registrazione.');
         }
       } catch (error) {
@@ -36,16 +35,16 @@ export default function Login() {
         alert('Impossibile contattare il server.');
       }
     } else {
-      // LOGICA DI LOGIN (La implementeremo nel prossimo step)
       console.log("Login in corso per:", { email, password });
-      alert("Il login sarà pronto a breve!");
+      alert("Il login sarà implementato a breve!");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center font-sans p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#141418] font-sans p-4">
       <div className="w-full max-w-md bg-gray-900/80 p-8 rounded-3xl border border-gray-700 shadow-2xl backdrop-blur-sm">
         
+        {/* Usiamo l'href di Next.js invece del to di React Router */}
         <Link href="/" className="text-gray-500 hover:text-white text-sm mb-6 inline-block transition-colors">
           &larr; Torna al Pokédex
         </Link>
