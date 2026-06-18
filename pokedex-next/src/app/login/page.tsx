@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function Login() {
+  const router = useRouter(); // Ci serve per reindirizzare l'utente
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,7 +15,7 @@ export default function Login() {
     e.preventDefault();
     
     if (isRegister) {
-      // LOGICA DI REGISTRAZIONE VERA E PROPRIA
+      // --- LOGICA DI REGISTRAZIONE ---
       try {
         const response = await fetch('/api/auth/register', {
           method: 'POST',
@@ -25,8 +27,8 @@ export default function Login() {
 
         if (response.ok) {
           alert('Allenatore registrato con successo! Ora puoi accedere.');
-          setIsRegister(false); // Torna al login
-          setPassword(''); // Pulisce la password
+          setIsRegister(false);
+          setPassword('');
         } else {
           alert(data.error || 'Errore durante la registrazione.');
         }
@@ -35,8 +37,29 @@ export default function Login() {
         alert('Impossibile contattare il server.');
       }
     } else {
-      console.log("Login in corso per:", { email, password });
-      alert("Il login sarà implementato a breve!");
+      // --- LOGICA DI LOGIN ---
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Salviamo i dati dell'utente nella memoria del browser
+          localStorage.setItem('pokedex_user', JSON.stringify(data.user));
+          
+          // Riportiamo l'utente alla Home Page
+          router.push('/');
+        } else {
+          alert(data.error || 'Errore durante il login.');
+        }
+      } catch (error) {
+        console.error("Errore di rete:", error);
+        alert('Impossibile contattare il server.');
+      }
     }
   };
 
@@ -44,7 +67,6 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-[#141418] font-sans p-4">
       <div className="w-full max-w-md bg-gray-900/80 p-8 rounded-3xl border border-gray-700 shadow-2xl backdrop-blur-sm">
         
-        {/* Usiamo l'href di Next.js invece del to di React Router */}
         <Link href="/" className="text-gray-500 hover:text-white text-sm mb-6 inline-block transition-colors">
           &larr; Torna al Pokédex
         </Link>
