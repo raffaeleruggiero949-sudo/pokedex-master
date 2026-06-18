@@ -28,17 +28,25 @@ export default function Home() {
   const [selectedType, setSelectedType] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
-  useEffect(() => {
+ useEffect(() => {
     setLoading(true);
-    fetch(`http://localhost:3000/api/cards?page=${currentPage}&limit=8`)
-      .then((response) => response.json())
+    // 1. Usiamo l'URL relativo /api/cards per usare l'API nativa di Next.js (niente più CORS!)
+    fetch(`/api/cards?page=${currentPage}&limit=8`)
+      .then((response) => {
+        if (!response.ok) throw new Error("Errore API");
+        return response.json();
+      })
       .then((json) => {
-        setCards(json.data);
-        setMeta(json.meta);
+        setCards(json.data || []);
+        setMeta(json.meta || null);
         setLoading(false);
       })
-      .catch((error) => console.error("Errore nel caricamento:", error));
-  }, [currentPage]);
+      .catch((error) => {
+        console.error("Errore nel caricamento:", error);
+        // 2. Aggiunto per evitare la schermata di caricamento infinita in caso di errore
+        setLoading(false); 
+      });
+  }, [currentPage]);;
 
   const filteredCards = cards.filter((card) => {
     const matchesSearch = card.name.toLowerCase().includes(searchTerm.toLowerCase());
