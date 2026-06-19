@@ -1,3 +1,29 @@
+"use client";
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+
+interface Card {
+  id: string;
+  name: string;
+  supertype: string;
+  rarity: string;
+  priceUsd: number;
+  imageUrl: string;
+  set: { name: string };
+}
+
+interface MetaData {
+  totalItems: number;
+  currentPage: number;
+  totalPages: number;
+}
+
+interface User {
+  name: string;
+  email: string;
+}
+
 export default function Home() {
   const [cards, setCards] = useState<Card[]>([]);
   const [meta, setMeta] = useState<MetaData | null>(null);
@@ -7,28 +33,30 @@ export default function Home() {
   // Stati per i filtri
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
-  const [selectedRarity, setSelectedRarity] = useState(''); // Nuovo
-  const [selectedLang, setSelectedLang] = useState('');     // Nuovo
+  const [selectedRarity, setSelectedRarity] = useState('');
+  const [selectedLang, setSelectedLang] = useState('');
   
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Un piccolo trucco per far scattare la ricerca dal primo bottone, 
-  // resettando la pagina a 1 quando cambiano i filtri
+  // Resetta la pagina a 1 quando cambiano i filtri
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedType, selectedRarity, selectedLang]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('pokedex_user');
-    if (storedUser) setUser(JSON.parse(storedUser));
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
 
     setLoading(true);
 
-    // Costruiamo dinamicamente l'URL con i parametri solo se sono valorizzati
+    // Costruiamo dinamicamente l'URL con i parametri
     const queryParams = new URLSearchParams({
       page: currentPage.toString(),
       limit: '8',
     });
+    
     if (searchTerm) queryParams.append('search', searchTerm);
     if (selectedType) queryParams.append('supertype', selectedType);
     if (selectedRarity) queryParams.append('rarity', selectedRarity);
@@ -46,6 +74,14 @@ export default function Home() {
         setLoading(false);
       });
   }, [currentPage, searchTerm, selectedType, selectedRarity, selectedLang]);
+
+  if (loading && cards.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8 font-sans min-h-screen text-white flex justify-center items-center">
+        <h1 className="text-3xl animate-pulse text-gray-500">Caricamento database mondiale...</h1>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 font-sans min-h-screen text-white flex flex-col">
@@ -70,10 +106,9 @@ export default function Home() {
         </div>
       </header>
 
-      {/* --- INIZIO BLOCCO FILTRI AGGIORNATO --- */}
+      {/* BLOCCO FILTRI AGGIORNATO */}
       <div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 mb-10 flex flex-col md:flex-row gap-4 items-center justify-between shadow-md">
         
-        {/* Ricerca per nome */}
         <div className="w-full md:w-2/5">
           <input
             type="text"
@@ -84,7 +119,6 @@ export default function Home() {
           />
         </div>
         
-        {/* Filtro Tipo */}
         <div className="w-full md:w-1/5">
           <select
             value={selectedType}
@@ -98,7 +132,6 @@ export default function Home() {
           </select>
         </div>
 
-        {/* Filtro Rarità */}
         <div className="w-full md:w-1/5">
           <select
             value={selectedRarity}
@@ -115,7 +148,6 @@ export default function Home() {
           </select>
         </div>
 
-        {/* Filtro Lingua */}
         <div className="w-full md:w-1/5">
           <select
             value={selectedLang}
@@ -128,18 +160,15 @@ export default function Home() {
           </select>
         </div>
       </div>
-      {/* --- FINE BLOCCO FILTRI AGGIORNATO --- */}
 
-      {/* --- GRIGLIA DELLE CARTE --- */}
+      {/* GRIGLIA DELLE CARTE */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-12">
-        {/* QUI HO TOLTO "filteredCards" E MESSO SOLO "cards" */}
         {cards.map((card) => (
           <Link href={`/cards/${card.id}`} key={card.id}>
             <div className="bg-gray-800 rounded-2xl p-4 shadow-lg border border-gray-700 hover:-translate-y-2 hover:border-red-500/50 transition-all h-full flex flex-col justify-between cursor-pointer">
               <div>
                 <img src={card.imageUrl} alt={card.name} className="w-full h-auto rounded-xl mb-4" />
                 <h2 className="text-xl font-bold text-white">{card.name}</h2>
-                {/* Nota: se TypeScript ti dà errore su card.set.name, assicurati di avere l'include corretto nell'API */}
                 <span className="text-gray-400 text-sm">{card.set?.name || 'Set Sconosciuto'}</span>
               </div>
               <div className="mt-4 pt-2 border-t border-gray-700/50 flex justify-between items-center">
@@ -151,7 +180,7 @@ export default function Home() {
         ))}
       </div>
 
-      {/* --- PAGINAZIONE --- */}
+      {/* PAGINAZIONE */}
       {meta && meta.totalPages > 1 && (
         <div className="mt-auto flex justify-center items-center space-x-6 bg-gray-900/50 p-4 rounded-full border border-gray-800 self-center">
           <button
@@ -174,5 +203,3 @@ export default function Home() {
     </div>
   );
 }
-
-  // perché il filtraggio è gestito totalmente dal server!
