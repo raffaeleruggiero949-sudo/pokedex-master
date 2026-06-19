@@ -111,21 +111,28 @@ export default function Profile() {
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">🎯 Progresso Masterset</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {portfolioData.mastersets.map((set: any) => (
-              <div key={set.setId} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-3">
-                    {set.logoUrl && <img src={set.logoUrl} alt="logo" className="h-8 w-auto object-contain" />}
-                    <h3 className="font-bold text-lg">{set.setName}</h3>
+              <Link href={`/profile/set/${set.setId}`} key={set.setId} className="group">
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg hover:border-blue-500 transition-all cursor-pointer h-full">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-3">
+                      {set.logoUrl && <img src={set.logoUrl} alt="logo" className="h-8 w-auto object-contain" />}
+                      <h3 className="font-bold text-lg group-hover:text-blue-400 transition-colors">{set.setName}</h3>
+                    </div>
+                    <span className="text-lg font-black text-blue-400">{set.percentage}%</span>
                   </div>
-                  <span className="text-lg font-black text-blue-400">{set.percentage}%</span>
+                  <div className="w-full bg-slate-950 rounded-full h-3 mb-4 overflow-hidden border border-slate-800">
+                    <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${set.percentage}%` }}></div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-slate-500 font-medium">
+                      {set.collectedUnique} / {set.totalCards} trovate
+                    </p>
+                    <span className="text-xs text-blue-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                      Apri Raccoglitore &rarr;
+                    </span>
+                  </div>
                 </div>
-                <div className="w-full bg-slate-950 rounded-full h-3 mb-2 overflow-hidden border border-slate-800">
-                  <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${set.percentage}%` }}></div>
-                </div>
-                <p className="text-xs text-slate-500 text-right font-medium">
-                  {set.collectedUnique} / {set.totalCards} trovate
-                </p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
