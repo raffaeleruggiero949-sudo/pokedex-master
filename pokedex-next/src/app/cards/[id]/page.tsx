@@ -10,32 +10,41 @@ export default function CardDetails() {
   
   const [card, setCard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null); // Nuovo stato per gli errori
   const [user, setUser] = useState<any>(null);
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
-    // Recupero dati utente dal localStorage
+    // 1. Carica l'utente dal localStorage
     const storedUser = localStorage.getItem('pokedex_user');
     if (storedUser) setUser(JSON.parse(storedUser));
 
-    // Recupero i dettagli della carta dall'API
+    // 2. Chiamata all'API per i dettagli
     if (params.id) {
-      fetch(`/api/cards/${params.id}`)
-        .then((res) => {
-          if (!res.ok) throw new Error('Carta non trovata');
+      // Garantiamo che sia una stringa
+      const cardId = Array.isArray(params.id) ? params.id[0] : params.id;
+
+      fetch(`/api/cards/${cardId}`)
+        .then(async (res) => {
+          if (!res.ok) {
+            // Se il backend risponde con un errore (es. 404 o 500), estraiamo il messaggio
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || `Errore HTTP: ${res.status}`);
+          }
           return res.json();
         })
         .then((data) => {
           setCard(data);
           setLoading(false);
         })
-        .catch(() => {
-          router.push('/'); // Se la carta non esiste, lo rimando alla Home
+        .catch((err) => {
+          console.error("Errore nella fetch:", err);
+          setErrorMsg(err.message); // Salviamo il messaggio di errore!
+          setLoading(false);
         });
     }
-  }, [params.id, router]);
+  }, [params.id]);
 
-  // Funzione che scatta quando clicchi "Aggiungi al Portfolio"
   const handleAddToPortfolio = async () => {
     if (!user) {
       alert("⚠️ Devi prima accedere o registrarti per avere un Portfolio!");
@@ -67,9 +76,26 @@ export default function CardDetails() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-white text-2xl animate-pulse">Ricerca nel Pokédex...</div>;
+  // --- SCHERMATE DI CARICAMENTO ED ERRORE ---
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center text-white text-2xl animate-pulse">Ricerca nel Pokédex...</div>;
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-white p-4">
+        <h1 className="text-4xl font-black text-red-500 mb-4">Ops! Qualcosa è andato storto.</h1>
+        <p className="text-xl text-gray-400 mb-8">{errorMsg}</p>
+        <Link href="/" className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-full font-bold transition-all">
+          &larr; Torna alla ricerca
+        </Link>
+      </div>
+    );
+  }
+
   if (!card) return null;
 
+  // --- GRAFICA PRINCIPALE ---
   return (
     <div className="container mx-auto px-4 py-12 font-sans min-h-screen text-white">
       <Link href="/" className="text-gray-400 hover:text-white mb-8 inline-block transition-all">
@@ -78,7 +104,6 @@ export default function CardDetails() {
 
       <div className="flex flex-col md:flex-row gap-12 items-center md:items-start bg-gray-800/40 p-8 rounded-3xl border border-gray-700 shadow-2xl">
         
-        {/* Colonna Sinistra: Immagine della carta */}
         <div className="w-full md:w-1/3">
           <img 
             src={card.imageUrl} 
@@ -87,7 +112,6 @@ export default function CardDetails() {
           />
         </div>
 
-        {/* Colonna Destra: Informazioni e Azioni */}
         <div className="w-full md:w-2/3 flex flex-col h-full justify-between">
           <div>
             <div className="flex justify-between items-start mb-2">
@@ -100,7 +124,7 @@ export default function CardDetails() {
               </div>
             </div>
             
-            <div className="flex gap-4 mt-6 mb-8">
+            <div className="flex flex-wrap gap-4 mt-6 mb-8">
               <span className="px-4 py-1 bg-red-600/20 text-red-400 border border-red-600 rounded-full font-mono text-sm uppercase">
                 {card.supertype}
               </span>
