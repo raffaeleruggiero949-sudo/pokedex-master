@@ -35,8 +35,10 @@ model Set {
 model Card {
   id         String     @id 
   name       String     
-  supertype  String     
+  supertype  String  
+  subtypes   String[]   
   rarity     String?
+  language   String     @default("IT") // Aggiunto per filtrare IT/JP
   priceUsd   Float?     
   imageUrl   String     
   setId      String     

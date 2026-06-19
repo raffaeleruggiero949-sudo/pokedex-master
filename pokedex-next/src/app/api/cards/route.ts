@@ -1,37 +1,32 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// src/app/api/cards/route.ts
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  
+  // Paginazione
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '8', 10);
   const skip = (page - 1) * limit;
-  
-  // Nuovi parametri di filtro
+
+  // Nuovi Filtri
   const search = searchParams.get('search') || '';
+  const supertype = searchParams.get('supertype') || '';
   const rarity = searchParams.get('rarity') || '';
   const language = searchParams.get('lang') || '';
 
-  const whereClause: any = {
-    name: { contains: search, mode: 'insensitive' }
-  };
+  // Costruiamo la clausola "WHERE" dinamicamente
+  const whereClause: any = {};
+
+  // Cerca parte del nome ignorando maiuscole/minuscole
+  if (search) whereClause.name = { contains: search, mode: 'insensitive' };
   
+  // Filtri esatti
+  if (supertype) whereClause.supertype = supertype;
   if (rarity) whereClause.rarity = rarity;
   if (language) whereClause.language = language;
 
-  const [cards, total] = await Promise.all([
-    prisma.card.findMany({
-      where: whereClause,
-      skip,
-      take: limit,
-      include: { set: true },
-    }),
-    prisma.card.count({ where: whereClause }),
-  ]);
-  // ... resto del codice
   try {
-    // Interroghiamo PostgreSQL tramite Prisma
     const [cards, total] = await Promise.all([
       prisma.card.findMany({
         where: whereClause,
@@ -39,7 +34,7 @@ export async function GET(request: Request) {
         take: limit,
         include: { set: true },
       }),
-      prisma.card.count(),
+      prisma.card.count({ where: whereClause }),
     ]);
 
     return NextResponse.json({

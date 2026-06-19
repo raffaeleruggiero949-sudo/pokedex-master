@@ -1,11 +1,67 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common'; // <-- Aggiunto Logger qui
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class CardsService {
+  private readonly logger = new Logger(CardsService.name);
+
   constructor(private prisma: PrismaService) {}
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async syncPricesNightly() {
+    this.logger.log('Inizio sincronizzazione notturna dei prezzi delle carte...');
+
+    try {
+      // 1. Recuperiamo tutte le carte presenti nel DB (selezioniamo solo l'ID per alleggerire)
+      const cards = await this.prisma.card.findMany({
+        select: { id: true, name: true }
+      });
+
+      this.logger.log(`Trovate ${cards.length} carte da aggiornare.`);
+
+      // 2. Cicliamo su ogni carta per aggiornarne il prezzo
+      for (const card of cards) {
+        try {
+          // Facciamo la chiamata all'API esterna
+          const response = await fetch(`https://api.pokemontcg.io/v2/cards/${card.id}`);
+          
+          if (!response.ok) {
+            this.logger.warn(`Impossibile recuperare i dati per la carta ${card.id}`);
+            continue;
+          }
+
+          const data = await response.json();
+          
+          // Estrapoliamo il prezzo di mercato
+          const newPrice = data.data.cardmarket?.prices?.averageSellPrice 
+            || data.data.tcgplayer?.prices?.normal?.market 
+            || null;
+
+          if (newPrice) {
+            // 3. Aggiorniamo il database tramite Prisma
+            await this.prisma.card.update({
+              where: { id: card.id },
+              data: { priceUsd: newPrice }
+            });
+            this.logger.log(`Prezzo aggiornato per ${card.name}: $${newPrice}`);
+          }
+
+          // Aggiungiamo un piccolo ritardo per non violare i rate-limit dell'API esterna
+          await new Promise(resolve => setTimeout(resolve, 500)); 
+
+        } catch (error) {
+          this.logger.error(`Errore nell'aggiornamento della carta ${card.id}:`, error);
+        }
+      }
+
+      this.logger.log('Sincronizzazione notturna completata con successo!');
+    } catch (error) {
+      this.logger.error('Errore fatale durante il Cron Job:', error);
+    }
+  } // <-- NESSUNA parentesi graffa di chiusura classe qui! Si continua.
 
   // Ho aggiunto il metodo create mancante
   async create(createCardDto: CreateCardDto) {
@@ -13,7 +69,7 @@ export class CardsService {
     return 'This action adds a new card';
   }
 
- async findAll(page: number = 1, limit: number = 10) {
+  async findAll(page: number = 1, limit: number = 10) {
     // Calcoliamo quanti record saltare. Es: Pagina 2 con limite 10 = salta i primi 10.
     const skip = (page - 1) * limit;
 
@@ -37,6 +93,7 @@ export class CardsService {
       },
     };
   }
+
   async findOne(id: string) {
     return this.prisma.card.findUnique({
       where: { id },

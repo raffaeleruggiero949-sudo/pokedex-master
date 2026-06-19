@@ -36,8 +36,8 @@ model Card {
   name       String     
   supertype  String  
   subtypes   String[]   
-  rarity     String?    // Qui avrai "Common", "Illustration Rare", "Special Illustration Rare", ecc.
-  language   String     @default("IT") // Aggiungi questo campo per filtrare IT/JP
+  rarity     String?
+  language   String     @default("IT") // Aggiunto per filtrare IT/JP
   priceUsd   Float?     
   imageUrl   String     
   setId      String     
