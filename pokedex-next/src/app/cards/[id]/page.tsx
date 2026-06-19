@@ -10,24 +10,20 @@ export default function CardDetails() {
   
   const [card, setCard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null); // Nuovo stato per gli errori
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [selectedLang, setSelectedLang] = useState('EN'); // Nuovo: Selettore lingua
 
   useEffect(() => {
-    // 1. Carica l'utente dal localStorage
     const storedUser = localStorage.getItem('pokedex_user');
     if (storedUser) setUser(JSON.parse(storedUser));
 
-    // 2. Chiamata all'API per i dettagli
     if (params.id) {
-      // Garantiamo che sia una stringa
       const cardId = Array.isArray(params.id) ? params.id[0] : params.id;
-
       fetch(`/api/cards/${cardId}`)
         .then(async (res) => {
           if (!res.ok) {
-            // Se il backend risponde con un errore (es. 404 o 500), estraiamo il messaggio
             const errorData = await res.json().catch(() => ({}));
             throw new Error(errorData.error || `Errore HTTP: ${res.status}`);
           }
@@ -35,11 +31,12 @@ export default function CardDetails() {
         })
         .then((data) => {
           setCard(data);
+          // Imposta la lingua predefinita se presente nel DB
+          if (data.language) setSelectedLang(data.language);
           setLoading(false);
         })
         .catch((err) => {
-          console.error("Errore nella fetch:", err);
-          setErrorMsg(err.message); // Salviamo il messaggio di errore!
+          setErrorMsg(err.message);
           setLoading(false);
         });
     }
@@ -51,24 +48,16 @@ export default function CardDetails() {
       router.push('/login');
       return;
     }
-
     setIsAdding(true);
     try {
       const res = await fetch('/api/portfolio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          cardId: card.id
-        })
+        body: JSON.stringify({ userId: user.id, cardId: card.id })
       });
-
       const result = await res.json();
-      if (res.ok) {
-        alert("✅ " + result.message);
-      } else {
-        alert("❌ Errore durante l'aggiunta.");
-      }
+      if (res.ok) alert("✅ " + result.message);
+      else alert("❌ Errore durante l'aggiunta.");
     } catch (error) {
       console.error(error);
     } finally {
@@ -76,95 +65,121 @@ export default function CardDetails() {
     }
   };
 
-  // --- SCHERMATE DI CARICAMENTO ED ERRORE ---
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-white text-2xl animate-pulse">Ricerca nel Pokédex...</div>;
-  }
-
-  if (errorMsg) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-white p-4">
-        <h1 className="text-4xl font-black text-red-500 mb-4">Ops! Qualcosa è andato storto.</h1>
-        <p className="text-xl text-gray-400 mb-8">{errorMsg}</p>
-        <Link href="/" className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-full font-bold transition-all">
-          &larr; Torna alla ricerca
-        </Link>
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300 text-2xl animate-pulse">Caricamento dettagli...</div>;
+  
+  if (errorMsg) return (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-4">
+      <h1 className="text-4xl font-black text-red-500 mb-4">Carta non trovata</h1>
+      <p className="text-xl text-slate-400 mb-8">{errorMsg}</p>
+      <Link href="/" className="px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-full font-bold transition-all">&larr; Torna alla ricerca</Link>
+    </div>
+  );
 
   if (!card) return null;
 
-  // --- GRAFICA PRINCIPALE ---
-  return (
-    <div className="container mx-auto px-4 py-12 font-sans min-h-screen text-white">
-      <Link href="/" className="text-gray-400 hover:text-white mb-8 inline-block transition-all">
-        &larr; Torna alla ricerca
-      </Link>
+  const basePrice = card.priceUsd || 0;
+  const psa10Price = (basePrice * 2.2).toFixed(2);
+  const psa9Price = (basePrice * 1.15).toFixed(2);
 
-      <div className="flex flex-col md:flex-row gap-12 items-center md:items-start bg-gray-800/40 p-8 rounded-3xl border border-gray-700 shadow-2xl">
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+      
+      {/* Freccia Indietro Sicura */}
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <Link href="/" className="text-slate-400 hover:text-white flex items-center gap-2 w-fit transition-colors text-lg font-medium">
+          <span>&larr;</span> Indietro
+        </Link>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 pb-16 flex flex-col md:flex-row gap-8 lg:gap-16">
         
-        <div className="w-full md:w-1/3">
-          <img 
-            src={card.imageUrl} 
-            alt={card.name} 
-            className="w-full h-auto rounded-2xl shadow-xl hover:scale-105 transition-transform duration-300"
-          />
+        {/* Immagine */}
+        <div className="w-full md:w-2/5 flex justify-center items-start">
+          <img src={card.imageUrl} alt={card.name} className="w-full max-w-md h-auto rounded-2xl shadow-2xl shadow-black/50" />
         </div>
 
-        <div className="w-full md:w-2/3 flex flex-col h-full justify-between">
-          <div>
-            <div className="flex justify-between items-start mb-2">
-              <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-400">
-                {card.name}
-              </h1>
-              <div className="bg-gray-900 px-4 py-2 rounded-xl border border-gray-700 shadow-inner">
-                <span className="text-sm text-gray-400 uppercase tracking-widest block text-center mb-1">Prezzo Mercato</span>
-                <span className="text-3xl font-black text-green-400">${card.priceUsd || '0.00'}</span>
+        {/* Info e Dettagli */}
+        <div className="w-full md:w-3/5 flex flex-col">
+          
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-2">{card.name}</h1>
+          <p className="text-slate-400 text-sm font-medium mb-6">
+            {card.set?.name || 'Set Sconosciuto'} • {card.id.split('-').pop()} / {card.set?.totalCards || '???'}
+          </p>
+
+          {/* TABS DELLE LINGUE (Interfaccia) */}
+          <div className="flex gap-2 mb-6 bg-slate-900 p-1 rounded-xl w-fit border border-slate-800">
+            {['EN', 'IT', 'JP'].map((lang) => (
+              <button 
+                key={lang}
+                onClick={() => setSelectedLang(lang)}
+                className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${selectedLang === lang ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
+              >
+                {lang === 'EN' ? '🇬🇧 English' : lang === 'IT' ? '🇮🇹 Italiano' : '🇯🇵 日本語'}
+              </button>
+            ))}
+          </div>
+
+          {/* BOX PREZZI (Colori fissati) */}
+          <div className="bg-slate-900 rounded-2xl p-6 mb-6 border border-slate-800 shadow-xl">
+            <div className="flex justify-between items-end pb-5 border-b border-slate-700/50">
+              <div className="flex flex-col">
+                <span className="text-slate-400 text-xs font-bold tracking-widest uppercase mb-1">Market Price</span>
+                <span className="text-emerald-400 text-5xl font-black tracking-tight">
+                  ${basePrice > 0 ? basePrice.toFixed(2) : '0.00'}
+                </span>
               </div>
             </div>
-            
-            <div className="flex flex-wrap gap-4 mt-6 mb-8">
-              <span className="px-4 py-1 bg-red-600/20 text-red-400 border border-red-600 rounded-full font-mono text-sm uppercase">
-                {card.supertype}
-              </span>
-              <span className="px-4 py-1 bg-blue-600/20 text-blue-400 border border-blue-600 rounded-full font-mono text-sm uppercase">
-                Rarità: {card.rarity || 'Normale'}
-              </span>
-              <span className="px-4 py-1 bg-purple-600/20 text-purple-400 border border-purple-600 rounded-full font-mono text-sm uppercase">
-                Lingua: {card.language}
-              </span>
-            </div>
 
-            <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-800 mb-8">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
-                {card.set?.logoUrl && <img src={card.set.logoUrl} alt="set logo" className="h-8 object-contain" />}
-                Dettagli Espansione
-              </h3>
-              <p className="text-gray-300"><strong className="text-white">Nome Set:</strong> {card.set?.name}</p>
-              <p className="text-gray-300"><strong className="text-white">Serie:</strong> {card.set?.series}</p>
-              <p className="text-gray-300"><strong className="text-white">Data d'uscita:</strong> {card.set?.releaseDate}</p>
-              <p className="text-gray-300"><strong className="text-white">Carte totali nel set:</strong> {card.set?.totalCards}</p>
+            <div className="grid grid-cols-3 gap-4 pt-5">
+              <div className="flex flex-col items-center">
+                <span className="text-slate-400 text-xs font-medium mb-1">Ungraded</span>
+                <span className="text-white font-bold">${basePrice > 0 ? basePrice.toFixed(2) : '---'}</span>
+              </div>
+              <div className="flex flex-col items-center border-l border-slate-700/50">
+                <span className="text-slate-400 text-xs font-medium mb-1">PSA 10</span>
+                <span className="text-white font-bold">${basePrice > 0 ? psa10Price : '---'}</span>
+              </div>
+              <div className="flex flex-col items-center border-l border-slate-700/50">
+                <span className="text-slate-400 text-xs font-medium mb-1">PSA 9</span>
+                <span className="text-white font-bold">${basePrice > 0 ? psa9Price : '---'}</span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-auto pt-8 border-t border-gray-700 flex items-center gap-6">
-            <button 
-              onClick={handleAddToPortfolio}
-              disabled={isAdding}
-              className={`w-full md:w-auto px-8 py-4 rounded-full font-black text-xl transition-all shadow-lg flex justify-center items-center gap-2 ${
-                isAdding 
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white hover:-translate-y-1'
-              }`}
-            >
-              {isAdding ? 'Salvataggio in corso...' : '➕ Aggiungi al Portfolio'}
-            </button>
-            <p className="text-sm text-gray-500 hidden md:block">
-              Clicca per aggiornare la tua collezione personale.<br/>
-              Se possiedi doppioni, clicca più volte!
-            </p>
+          <button 
+            onClick={handleAddToPortfolio}
+            disabled={isAdding}
+            className={`w-full py-4 rounded-xl font-bold text-xl transition-all shadow-lg mb-8 flex justify-center items-center gap-3 ${
+              isAdding ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/50'
+            }`}
+          >
+            <span className="text-2xl font-normal leading-none">+</span>
+            {isAdding ? 'Aggiunta in corso...' : 'AGGIUNGI AL PORTFOLIO'}
+          </button>
+
+          {/* Dettagli tecnici della carta */}
+          <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
+            <h3 className="text-white text-lg font-bold mb-5">Card Details</h3>
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center pb-3 border-b border-slate-800/80">
+                <span className="text-slate-400 text-sm">Rarity</span>
+                <span className="text-white text-sm font-medium">{card.rarity || 'Standard'}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-800/80">
+                <span className="text-slate-400 text-sm">Type</span>
+                <span className="text-white text-sm font-medium">{card.supertype}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-800/80">
+                <span className="text-slate-400 text-sm">Series</span>
+                <span className="text-white text-sm font-medium">{card.set?.series || 'Pokémon TCG'}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-800/80">
+                <span className="text-slate-400 text-sm">Release Date</span>
+                <span className="text-white text-sm font-medium">{card.set?.releaseDate || 'N/D'}</span>
+              </div>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
