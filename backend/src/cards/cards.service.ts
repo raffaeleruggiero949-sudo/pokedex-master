@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { PokemonTCG } from 'pokemon-tcg-sdk-typescript'; // <-- Import dell'SDK
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,7 +12,7 @@ export class CardsService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async syncPricesNightly() {
-    this.logger.log('Inizio sincronizzazione notturna dei prezzi delle carte tramite SDK...');
+    this.logger.log('Inizio sincronizzazione notturna dei prezzi delle carte via REST API...');
 
     try {
       // 1. Recuperiamo tutte le carte presenti nel nostro DB
@@ -30,8 +29,16 @@ export class CardsService {
           // L'API americana riconosce solo l'ID originale (es. "sv1-1")
           const originalId = card.id.replace('-IT', '').replace('-EN', '').replace('-JP', '');
 
-          // Facciamo la chiamata usando l'SDK Ufficiale
-          const externalCard = await PokemonTCG.Card.find(originalId);
+          // Facciamo la chiamata diretta all'API Ufficiale tramite fetch
+          const response = await fetch(`https://api.pokemontcg.io/v2/cards/${originalId}`);
+          
+          if (!response.ok) {
+            this.logger.warn(`Impossibile recuperare i dati per la carta ${card.id}`);
+            continue; // Saltiamo questa carta e passiamo alla prossima
+          }
+
+          const responseData = await response.json();
+          const externalCard = responseData.data;
           
           // Estrapoliamo il prezzo di mercato
           const newPrice = externalCard.cardmarket?.prices?.averageSellPrice 
@@ -39,7 +46,7 @@ export class CardsService {
             || null;
 
           if (newPrice) {
-            // 3. Aggiorniamo il database tramite Prisma usando il VERO id del DB (con eventuale suffisso)
+            // 3. Aggiorniamo il database tramite Prisma
             await this.prisma.card.update({
               where: { id: card.id },
               data: { priceUsd: newPrice }
@@ -47,12 +54,11 @@ export class CardsService {
             this.logger.log(`Prezzo aggiornato per ${card.name} (${card.id}): $${newPrice}`);
           }
 
-          // Aggiungiamo un piccolo ritardo per non violare i rate-limit dell'API esterna
+          // Aggiungiamo un piccolo ritardo (500ms) per non violare i rate-limit dell'API esterna
           await new Promise(resolve => setTimeout(resolve, 500)); 
 
         } catch (error) {
-          // Catturiamo gli errori (es. carta non trovata) senza bloccare il ciclo generale
-          this.logger.error(`Errore SDK per la carta ${card.id}:`, error);
+          this.logger.error(`Errore di rete per la carta ${card.id}:`, error);
         }
       }
 
@@ -69,10 +75,8 @@ export class CardsService {
   }
 
   async findAll(page: number = 1, limit: number = 10) {
-    // Calcoliamo quanti record saltare. Es: Pagina 2 con limite 10 = salta i primi 10.
     const skip = (page - 1) * limit;
 
-    // Eseguiamo due query contemporaneamente: prendiamo le carte e contiamo il totale esatto
     const [cards, total] = await Promise.all([
       this.prisma.card.findMany({
         skip,
@@ -82,7 +86,6 @@ export class CardsService {
       this.prisma.card.count(),
     ]);
 
-    // Restituiamo un oggetto strutturato con i metadati di paginazione
     return {
       data: cards,
       meta: {
