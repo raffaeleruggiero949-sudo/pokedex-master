@@ -25,7 +25,6 @@ interface User {
   email: string;
 }
 
-// 1. IL DIZIONARIO PER L'INTERFACCIA DEL SITO (UI)
 const translations = {
   IT: {
     subtitle: "Esplora l'archivio globale delle carte.",
@@ -81,18 +80,16 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   
-  // Stato per la Lingua dell'Interfaccia (IT o EN)
   const [uiLang, setUiLang] = useState<'IT' | 'EN'>('IT');
-  const t = translations[uiLang]; // Scorciatoia per usare il dizionario
+  const t = translations[uiLang]; 
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [selectedRarity, setSelectedRarity] = useState('');
-  const [selectedCardLang, setSelectedCardLang] = useState(''); // Stato per la lingua delle Carte (EN o JP)
+  const [selectedCardLang, setSelectedCardLang] = useState(''); 
   
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Resetta la pagina a 1 quando cambiano i filtri
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedType, selectedRarity, selectedCardLang]);
@@ -101,11 +98,8 @@ export default function Home() {
     const storedUser = localStorage.getItem('pokedex_user');
     if (storedUser) setUser(JSON.parse(storedUser));
 
-    // Carichiamo l'eventuale preferenza della lingua del sito salvata in precedenza
     const savedUiLang = localStorage.getItem('pokedex_ui_lang');
-    if (savedUiLang === 'EN' || savedUiLang === 'IT') {
-      setUiLang(savedUiLang);
-    }
+    if (savedUiLang === 'EN' || savedUiLang === 'IT') setUiLang(savedUiLang);
 
     setLoading(true);
 
@@ -132,7 +126,6 @@ export default function Home() {
       });
   }, [currentPage, searchTerm, selectedType, selectedRarity, selectedCardLang]);
 
-  // Funzione per cambiare la lingua del sito
   const toggleUiLanguage = () => {
     const newLang = uiLang === 'IT' ? 'EN' : 'IT';
     setUiLang(newLang);
@@ -142,7 +135,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 font-sans text-slate-100 flex flex-col selection:bg-blue-500/30">
       
-      {/* HEADER */}
       <header className="bg-slate-900 border-b border-slate-800 px-8 py-6 shadow-lg sticky top-0 z-50 flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="text-center md:text-left">
           <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">
@@ -152,7 +144,6 @@ export default function Home() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* BOTTONE LINGUA DEL SITO (UI Toggle) */}
           <button 
             onClick={toggleUiLanguage}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-lg font-bold transition-all flex items-center gap-2"
@@ -174,7 +165,6 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-4 py-8 w-full flex-grow flex flex-col">
         
-        {/* BLOCCO FILTRI AVANZATI */}
         <div className="bg-slate-900 p-4 md:p-6 rounded-2xl border border-slate-800 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between shadow-xl">
           
           <div className="w-full md:w-1/3">
@@ -212,7 +202,8 @@ export default function Home() {
               <option value="Rare">{t.rare}</option>
               <option value="Rare Holo">Holo</option>
               
-              <optgroup label="Carte V, EX, GX" className="bg-slate-900 text-blue-400">
+              {/* Le categorie V, EX, e MEGA */}
+              <optgroup label="Carte V, EX, GX, MEGA" className="bg-slate-900 text-blue-400">
                 <option value="Rare Holo V" className="text-white">V</option>
                 <option value="Rare Holo VMAX" className="text-white">VMAX</option>
                 <option value="Rare Holo VSTAR" className="text-white">VSTAR</option>
@@ -221,17 +212,25 @@ export default function Home() {
                 <option value="Double Rare" className="text-white">ex (Double Rare)</option>
               </optgroup>
 
+              {/* Le categorie Alternative, Full Art e Gold */}
               <optgroup label="Full Art & Segrete" className="bg-slate-900 text-emerald-400">
                 <option value="Rare Ultra" className="text-white">Full Art / Ultra Rare</option>
                 <option value="Illustration Rare" className="text-white">Illustration Rare (IR)</option>
                 <option value="Special Illustration Rare" className="text-white">Special Ill. Rare (SIR)</option>
-                <option value="Rare Secret" className="text-white">Secret Rare</option>
-                <option value="Hyper Rare" className="text-white">Hyper Rare (Gold)</option>
+                <option value="Hyper Rare" className="text-white">Hyper Rare (Nuove Gold SV)</option>
+                <option value="Rare Secret" className="text-white">Secret Rare (Vecchie Gold / Rainbow)</option>
+              </optgroup>
+
+              {/* Le categorie super rare come Radiant e Gold Star */}
+              <optgroup label="Speciali & Fuoriserie" className="bg-slate-900 text-yellow-400">
+                <option value="Radiant Rare" className="text-white">Radiant Rare</option>
+                <option value="Amazing Rare" className="text-white">Amazing Rare</option>
+                <option value="Rare Holo Star" className="text-white">Gold Star (Classiche)</option>
+                <option value="LEGEND" className="text-white">LEGEND</option>
               </optgroup>
             </select>
           </div>
 
-          {/* FILTRO LINGUA DELLE CARTE (Solo EN e JP) */}
           <div className="w-full md:w-1/4">
             <select
               value={selectedCardLang}
@@ -245,7 +244,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* GRIGLIA DELLE CARTE */}
         {loading && cards.length === 0 ? (
           <div className="flex-grow flex items-center justify-center">
             <div className="text-2xl text-slate-500 animate-pulse font-bold">{t.loading}</div>
@@ -286,7 +284,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* PAGINAZIONE */}
         {meta && meta.totalPages > 1 && (
           <div className="mt-auto flex justify-center items-center space-x-6 bg-slate-900 p-4 rounded-full border border-slate-800 w-fit mx-auto shadow-lg">
             <button
