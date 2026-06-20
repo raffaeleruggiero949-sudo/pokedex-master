@@ -7,8 +7,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // NON inserire l'URL qui in Prisma 7!
+ 
 }
+
 model User {
   id        String     @id @default(uuid())
   name      String?
@@ -27,7 +28,7 @@ model Set {
   totalCards  Int
   releaseDate String
   logoUrl     String?
-  language    String     @default("EN") // <--- AGGIUNGI QUESTA RIGA
+  language    String     @default("EN") 
   cards       Card[]
 }
 
@@ -38,7 +39,8 @@ model Card {
   rarity      String?
   priceUsd    Float?
   imageUrl    String?
-  language    String     @default("EN") // <--- AGGIUNGI QUESTA RIGA
+  language    String     @default("EN") 
+  hasReverse  Boolean    @default(false) // AGGIUNTO PER I MASTER SET
   setId       String
   set         Set        @relation(fields: [setId], references: [id])
   userCards   UserCard[]
@@ -51,7 +53,10 @@ model UserCard {
   cardId    String
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
   quantity  Int      @default(1) 
+  variant   String   @default("Normal") // AGGIUNTO (Es. "Normal", "Reverse Holo")
+  condition String   @default("NM")     // AGGIUNTO (Condizione: NM, PL, ecc.)
   createdAt DateTime @default(now())
 
-  @@unique([userId, cardId]) 
+  // MODIFICATO: ora include "variant" così puoi salvare Normale e Reverse della stessa carta
+  @@unique([userId, cardId, variant]) 
 }

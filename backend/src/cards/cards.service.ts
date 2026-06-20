@@ -10,7 +10,7 @@ export class CardsService {
 
   constructor(private prisma: PrismaService) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron('*/15 * * * * *')
   async syncPricesNightly() {
     this.logger.log('Inizio sincronizzazione notturna dei prezzi delle carte via REST API...');
 

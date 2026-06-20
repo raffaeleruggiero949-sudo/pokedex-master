@@ -1,81 +1,46 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import fs from 'fs';
-import path from 'path';
+import s12aData from '@/data/S12a.json';
 
-export async function POST(request: Request) {
+export async function GET() {
   try {
-    const { setId, lang } = await request.json();
-
-    if (!setId || !lang) {
-      return NextResponse.json({ error: 'Parametri mancanti' }, { status: 400 });
-    }
-
-    const filePath = path.join(process.cwd(), 'src', 'data', `${setId}.json`);
-
-    if (!fs.existsSync(filePath)) {
-      return NextResponse.json({ 
-        error: `File locale non trovato! Assicurati di aver creato il file: src/data/${setId}.json` 
-      }, { status: 404 });
-    }
-
-    const fileContents = fs.readFileSync(filePath, 'utf8');
-    const setData = JSON.parse(fileContents);
-
-    if (!setData || !setData.cards) {
-      return NextResponse.json({ error: 'Il file JSON è vuoto o non contiene carte.' }, { status: 400 });
-    }
-
-    // 1. IMPORTANTE: Creiamo/Aggiorniamo PRIMA il Set nel database!
-    // Così Prisma non andrà in panico quando cercherà di collegargli le carte.
+    // Assicuriamoci che il set VSTAR Universe esista nel DB prima di inserire le carte
     await prisma.set.upsert({
-      where: { id: setId },
-      update: {}, // Se c'è già non lo tocchiamo
+      where: { id: "S12a" },
+      update: {},
       create: {
-        id: setId,
-        name: setData.name || `Set ${setId.toUpperCase()}`,
-        series: 'Sconosciuta',
-        totalCards: setData.cardCount?.total || setData.cards.length,
-        releaseDate: setData.releaseDate || '1996-01-01',
-        logoUrl: setData.logo ? `${setData.logo}.png` : '',
-        language: lang
+        id: "S12a",
+        name: "VSTAR Universe",
+        series: "Sword & Shield",
+        totalCards: 262,
+        releaseDate: "2022-12-02",
+        language: "JP"
       }
     });
 
-    let insertedCount = 0;
+    // Mappiamo i dati dal JSON per farli combaciare col tuo schema Prisma
+    const cardsToInsert = s12aData.cards.map((card: any) => ({
+      id: card.id,
+      name: card.name,
+      supertype: "Pokémon", // Default generico
+      imageUrl: `${card.image}/high.webp`, // URL immagine in alta qualità da TCGDex
+      language: "JP",
+      hasReverse: true, // VSTAR Universe ha le reverse
+      setId: "S12a"
+    }));
 
-    // 2. Ora possiamo inserire tranquillamente le carte
-    for (const card of setData.cards) {
-      const cardId = lang === 'JP' ? `${card.id}-JP` : card.id;
-      const imageUrl = card.image ? `${card.image}/high.webp` : 'https://via.placeholder.com/250';
-
-      await prisma.card.upsert({
-        where: { id: cardId },
-        update: {}, 
-        create: {
-          id: cardId,
-          name: card.name || 'Sconosciuto',
-          supertype: 'Pokémon',
-          rarity: card.rarity || 'Sconosciuta',
-          language: lang,
-          priceUsd: 0,
-          imageUrl: imageUrl,
-          setId: setId,
-        }
-      });
-      insertedCount++;
-    }
+    // Inseriamo tutto nel DB ignorando eventuali duplicati
+    const result = await prisma.card.createMany({
+      data: cardsToInsert,
+      skipDuplicates: true, 
+    });
 
     return NextResponse.json({ 
       success: true, 
-      message: `Importazione Offline Completata! 🚀 Inserite ${insertedCount} carte direttamente dal tuo PC.`
+      message: `Caricate con successo ${result.count} carte del set S12a dal file locale!` 
     });
-
-  } catch (error: any) {
-    console.error("Errore importazione locale:", error);
-    // 3. DEBUG: Restituiamo il messaggio di errore VERO di Prisma se qualcosa va storto
-    return NextResponse.json({ 
-      error: `Errore tecnico: ${error.message || 'Sconosciuto'}` 
-    }, { status: 500 });
+  } catch (error) {
+    console.error("Errore sync-local:", error);
+    return NextResponse.json({ error: "Errore durante il caricamento del file S12a" }, { status: 500 });
   }
 }
