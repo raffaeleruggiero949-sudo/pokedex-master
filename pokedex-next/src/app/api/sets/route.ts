@@ -3,14 +3,20 @@ import prisma from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // Peschiamo tutti i set dal database ordinandoli per data di uscita (dal più nuovo)
     const sets = await prisma.set.findMany({
-      orderBy: { releaseDate: 'desc' }
+      // Questo comando forza Prisma a estrarre anche tutte le carte 
+      // collegate a ciascun set, risolvendo il problema della griglia vuota.
+      include: {
+        cards: true, 
+      },
+      orderBy: {
+        id: 'desc' // Ordina in base all'ID (opzionale)
+      }
     });
-    
+
     return NextResponse.json(sets);
   } catch (error) {
-    console.error("Errore recupero set:", error);
-    return NextResponse.json({ error: 'Errore interno del server' }, { status: 500 });
+    console.error("Errore nel recupero dei set:", error);
+    return NextResponse.json({ error: "Errore nel caricamento dei set" }, { status: 500 });
   }
 }
