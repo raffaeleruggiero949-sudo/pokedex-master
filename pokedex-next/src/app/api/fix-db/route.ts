@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // 1. Scarichiamo gli elenchi UFFICIALI da TCGDex per avere la verità assoluta
+    // 1. Scarichiamo gli elenchi UFFICIALI da TCGDex
     const [jaRes, enRes] = await Promise.all([
       fetch('https://api.tcgdex.net/v2/ja/sets'),
       fetch('https://api.tcgdex.net/v2/en/sets')
@@ -24,16 +24,13 @@ export async function GET() {
       const setIdLower = set.id.toLowerCase();
       let correctLanguage = set.language;
 
-      // Se l'ID è nella lista ufficiale giapponese, DEVE essere JP
       if (jpIds.has(setIdLower)) {
         correctLanguage = 'JP';
-      } 
-      // Se l'ID è nella lista ufficiale inglese, DEVE essere EN
-      else if (enIds.has(setIdLower)) {
+      } else if (enIds.has(setIdLower)) {
         correctLanguage = 'EN';
       }
 
-      // Se la lingua nel DB non corrisponde a quella reale, la sovrascriviamo
+      // Se la lingua nel DB è sbagliata, la sovrascriviamo con quella reale!
       if (set.language !== correctLanguage) {
         await prisma.set.update({
           where: { id: set.id },
@@ -49,6 +46,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Errore fix DB:", error);
-    return NextResponse.json({ error: "Errore durante la pulizia del database" }, { status: 500 });
+    return NextResponse.json({ error: "Errore durante la pulizia" }, { status: 500 });
   }
 }
