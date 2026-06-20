@@ -1,51 +1,54 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma'; 
 
 export async function GET() {
   try {
-    // 1. Scarichiamo gli elenchi UFFICIALI da TCGDex
-    const [jaRes, enRes] = await Promise.all([
-      fetch('https://api.tcgdex.net/v2/ja/sets'),
-      fetch('https://api.tcgdex.net/v2/en/sets')
-    ]);
+    // 1. Troviamo gli ID di tutti i set che sono stati marcati come JP
+    const jpSets = await prisma.set.findMany({
+      where: { language: 'JP' },
+      select: { id: true }
+    });
 
-    const jaSets = await jaRes.json();
-    const enSets = await enRes.json();
+    const jpSetIds = jpSets.map(set => set.id);
 
-    // 2. Creiamo una lista di ID per controllarli velocemente
-    const jpIds = new Set(jaSets.map((s: any) => s.id.toLowerCase()));
-    const enIds = new Set(enSets.map((s: any) => s.id.toLowerCase()));
-
-    const dbSets = await prisma.set.findMany();
-    let fixedCount = 0;
-
-    // 3. Controlliamo e correggiamo ogni set nel tuo database
-    for (const set of dbSets) {
-      const setIdLower = set.id.toLowerCase();
-      let correctLanguage = set.language;
-
-      if (jpIds.has(setIdLower)) {
-        correctLanguage = 'JP';
-      } else if (enIds.has(setIdLower)) {
-        correctLanguage = 'EN';
-      }
-
-      // Se la lingua nel DB è sbagliata, la sovrascriviamo con quella reale!
-      if (set.language !== correctLanguage) {
-        await prisma.set.update({
-          where: { id: set.id },
-          data: { language: correctLanguage }
-        });
-        fixedCount++;
-      }
+    // Se non trova nulla, ci avvisa senza fare danni
+    if (jpSetIds.length === 0) {
+      return NextResponse.json({ 
+        success: true, 
+        message: "Nessun set giapponese trovato nel database. È già pulito!" 
+      });
     }
+
+    // 2. Eliminiamo PRIMA tutte le carte che appartengono a questi set giapponesi.
+    // (Questo previene l'errore di blocco del database sulle relazioni)
+    const deletedCards = await prisma.card.deleteMany({
+      where: {
+        setId: { in: jpSetIds }
+      }
+    });
+
+    // 3. ORA che le carte non ci sono più, possiamo eliminare i Set in totale sicurezza
+    const deletedSets = await prisma.set.deleteMany({
+      where: {
+        id: { in: jpSetIds }
+      }
+    });
 
     return NextResponse.json({
       success: true,
-      message: `✨ Database pulito con successo! Sistemate le lingue di ${fixedCount} espansioni mischiate.`
+      message: `Pulizia forzata completata con successo! Rimosse ${deletedCards.count} carte e ${deletedSets.count} set giapponesi.`
     });
-  } catch (error) {
-    console.error("Errore fix DB:", error);
-    return NextResponse.json({ error: "Errore durante la pulizia" }, { status: 500 });
+
+  } catch (error: any) {
+    // Qui stampiamo l'errore VERO e specifico nel terminale di VS Code
+    console.error("ERRORE DATABASE DURANTE LA PULIZIA:", error.message || error);
+    
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: "Si è rotto qualcosa. Controlla il terminale di VS Code (dove hai fatto npm run dev) per leggere il messaggio di errore rosso esatto." 
+      }, 
+      { status: 500 }
+    );
   }
 }

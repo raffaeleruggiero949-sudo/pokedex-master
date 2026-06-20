@@ -208,69 +208,6 @@ export default function Profile() {
             ))}
           </div>
         </div>
-
-        {/* --- PANNELLO ADMIN --- */}
-        <div className="mt-16 bg-slate-900/50 border border-amber-500/30 p-6 rounded-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
-          <h2 className="text-xl font-bold text-amber-500 mb-2 flex items-center gap-2">
-            ⚙️ Pannello Sviluppatore (Admin)
-          </h2>
-          <p className="text-sm text-slate-400 mb-6">
-            Usa questi comandi di manutenzione per popolare e correggere il database.
-          </p>
-          
-          <div className="flex flex-col md:flex-row gap-4 flex-wrap items-start">
-            
-            <button onClick={handleFixLang} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl font-bold transition-all text-sm text-left flex flex-col h-full">
-              <span>1. Correggi Lingua Inglese</span>
-              <span className="text-xs font-normal text-slate-500 mt-1">Imposta "EN" alle vecchie carte</span>
-            </button>
-            
-            <button onClick={async () => {
-                const res = await fetch('/api/sync-jp-sets');
-                const data = await res.json();
-                alert(data.message);
-              }} className="px-6 py-3 bg-fuchsia-600/20 hover:bg-fuchsia-600 border border-fuchsia-600/50 text-fuchsia-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col h-full">
-              <span>2. 📚 Importa Elenco Set JP</span>
-              <span className="text-xs font-normal opacity-70 mt-1">Popola il menu a tendina</span>
-            </button>
-
-            <button onClick={handleSyncJP} disabled={isSyncingJP} className="px-6 py-3 bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-600/50 text-indigo-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col disabled:opacity-50 h-full">
-              <span>{isSyncingJP ? '⏳ Scaricamento...' : '3. 🃏 Scarica Shiny Treasure'}</span>
-              <span className="text-xs font-normal opacity-70 mt-1">Download da TCGDex (API)</span>
-            </button>
-
-            {/* LA NUOVA CASELLA DI TESTO (NIENTE PIÙ POP-UP!) */}
-            <div className="flex flex-col bg-emerald-600/10 border border-emerald-600/30 p-3 rounded-xl gap-2 w-full md:w-auto">
-              <div>
-                <span className="font-bold text-emerald-400 block">4. 💾 Importa da File Locale</span>
-                <span className="text-xs font-normal opacity-70 text-slate-300">Carica i dati offline (src/data/)</span>
-              </div>
-              <div className="flex gap-2 mt-1">
-                <input
-                  type="text"
-                  placeholder="ID (es. s12a)"
-                  value={localSetId}
-                  onChange={(e) => setLocalSetId(e.target.value)}
-                  className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm w-28 outline-none focus:border-emerald-500 transition-colors"
-                />
-                <button
-                  onClick={handleSyncLocal}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-sm transition-all shadow-lg"
-                >
-                  Importa
-                </button>
-              </div>
-            </div>
-
-            <button onClick={handleCreateLocalFile} className="px-6 py-3 bg-teal-600/20 hover:bg-teal-600 border border-teal-600/50 text-teal-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col h-full">
-              <span>5. 🪄 Crea File Locale (S12a)</span>
-              <span className="text-xs font-normal opacity-70 mt-1">Genera JSON in src/data/</span>
-            </button>
-
-          </div>
-        </div>
-
       </div>
     </div>
   );
