@@ -13,6 +13,9 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   
   const [isSyncingJP, setIsSyncingJP] = useState(false);
+  
+  // NUOVO STATO REACT per l'input di testo (sostituisce il pop-up!)
+  const [localSetId, setLocalSetId] = useState('');
 
   const generateChartData = (currentTotal: number) => {
     const data = [];
@@ -49,7 +52,6 @@ export default function Profile() {
     router.push('/');
   };
 
-  // --- FUNZIONI ADMIN ---
   const handleFixLang = async () => {
     try {
       const res = await fetch('/api/fix-lang');
@@ -73,24 +75,32 @@ export default function Profile() {
     }
   };
 
+  // Niente più pop-up, usiamo il valore scritto nella casella!
   const handleSyncLocal = async () => {
-    const setId = prompt("Inserisci l'ID del Set locale da importare (es. S12a):");
-    if (!setId) return;
+    if (!localSetId) {
+      alert("⚠️ Inserisci prima l'ID del set nella casella di testo in basso (es. s12a)!");
+      return;
+    }
 
     try {
       const res = await fetch('/api/sync-local', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ setId: setId.toLowerCase(), lang: 'JP' })
+        body: JSON.stringify({ setId: localSetId.toLowerCase(), lang: 'JP' })
       });
       const data = await res.json();
-      alert(data.message || data.error);
+      
+      if (res.ok) {
+        alert("✅ " + data.message);
+        setLocalSetId(''); // Svuota la casella dopo il successo
+      } else {
+        alert("❌ Errore: " + data.error);
+      }
     } catch (err) {
-      alert("Errore durante la lettura dal file locale.");
+      alert("Errore durante la connessione al server.");
     }
   };
 
-  // NUOVA FUNZIONE: Crea il file formattato
   const handleCreateLocalFile = async () => {
     try {
       const res = await fetch('/api/create-local-file');
@@ -209,8 +219,9 @@ export default function Profile() {
             Usa questi comandi di manutenzione per popolare e correggere il database.
           </p>
           
-          <div className="flex flex-col md:flex-row gap-4 flex-wrap">
-            <button onClick={handleFixLang} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl font-bold transition-all text-sm text-left flex flex-col">
+          <div className="flex flex-col md:flex-row gap-4 flex-wrap items-start">
+            
+            <button onClick={handleFixLang} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl font-bold transition-all text-sm text-left flex flex-col h-full">
               <span>1. Correggi Lingua Inglese</span>
               <span className="text-xs font-normal text-slate-500 mt-1">Imposta "EN" alle vecchie carte</span>
             </button>
@@ -219,26 +230,44 @@ export default function Profile() {
                 const res = await fetch('/api/sync-jp-sets');
                 const data = await res.json();
                 alert(data.message);
-              }} className="px-6 py-3 bg-fuchsia-600/20 hover:bg-fuchsia-600 border border-fuchsia-600/50 text-fuchsia-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col">
-              <span>2. 📚 Importa Elenco Set Giapponesi</span>
-              <span className="text-xs font-normal opacity-70 mt-1">Popola il menu a tendina (Veloce)</span>
+              }} className="px-6 py-3 bg-fuchsia-600/20 hover:bg-fuchsia-600 border border-fuchsia-600/50 text-fuchsia-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col h-full">
+              <span>2. 📚 Importa Elenco Set JP</span>
+              <span className="text-xs font-normal opacity-70 mt-1">Popola il menu a tendina</span>
             </button>
 
-            <button onClick={handleSyncJP} disabled={isSyncingJP} className="px-6 py-3 bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-600/50 text-indigo-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col disabled:opacity-50 disabled:cursor-not-allowed">
-              <span>{isSyncingJP ? '⏳ Scaricamento in corso...' : '3. 🃏 Scarica Carte Shiny Treasure'}</span>
+            <button onClick={handleSyncJP} disabled={isSyncingJP} className="px-6 py-3 bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-600/50 text-indigo-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col disabled:opacity-50 h-full">
+              <span>{isSyncingJP ? '⏳ Scaricamento...' : '3. 🃏 Scarica Shiny Treasure'}</span>
               <span className="text-xs font-normal opacity-70 mt-1">Download da TCGDex (API)</span>
             </button>
 
-            <button onClick={handleSyncLocal} className="px-6 py-3 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-600/50 text-emerald-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col">
-              <span>4. 💾 Importa da File Locale</span>
-              <span className="text-xs font-normal opacity-70 mt-1">Carica i dati offline dal tuo PC</span>
+            {/* LA NUOVA CASELLA DI TESTO (NIENTE PIÙ POP-UP!) */}
+            <div className="flex flex-col bg-emerald-600/10 border border-emerald-600/30 p-3 rounded-xl gap-2 w-full md:w-auto">
+              <div>
+                <span className="font-bold text-emerald-400 block">4. 💾 Importa da File Locale</span>
+                <span className="text-xs font-normal opacity-70 text-slate-300">Carica i dati offline (src/data/)</span>
+              </div>
+              <div className="flex gap-2 mt-1">
+                <input
+                  type="text"
+                  placeholder="ID (es. s12a)"
+                  value={localSetId}
+                  onChange={(e) => setLocalSetId(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm w-28 outline-none focus:border-emerald-500 transition-colors"
+                />
+                <button
+                  onClick={handleSyncLocal}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-sm transition-all shadow-lg"
+                >
+                  Importa
+                </button>
+              </div>
+            </div>
+
+            <button onClick={handleCreateLocalFile} className="px-6 py-3 bg-teal-600/20 hover:bg-teal-600 border border-teal-600/50 text-teal-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col h-full">
+              <span>5. 🪄 Crea File Locale (S12a)</span>
+              <span className="text-xs font-normal opacity-70 mt-1">Genera JSON in src/data/</span>
             </button>
 
-            {/* NUOVO BOTTONE */}
-            <button onClick={handleCreateLocalFile} className="px-6 py-3 bg-teal-600/20 hover:bg-teal-600 border border-teal-600/50 text-teal-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col">
-              <span>5. 🪄 Crea File Locale (S12a)</span>
-              <span className="text-xs font-normal opacity-70 mt-1">Scarica e formatta automaticamente in src/data/</span>
-            </button>
           </div>
         </div>
 
