@@ -3,92 +3,48 @@ import prisma from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // 1. Chiamata per scaricare le CARTE in Giapponese (Immagini e nomi originali)
-    const responseJa = await fetch('https://api.tcgdex.net/v2/ja/sets/sv4a');
+    // 1. Chiediamo l'elenco dei set giapponesi (per avere gli ID esatti)
+    const resJa = await fetch('https://api.tcgdex.net/v2/ja/sets');
+    const setsJa = await resJa.json();
     
-    // 2. Chiamata strategica per scaricare i dettagli del SET in Inglese!
-    const responseEn = await fetch('https://api.tcgdex.net/v2/en/sets/sv4a');
+    // 2. Chiediamo l'elenco in inglese (per avere le traduzioni dei nomi!)
+    const resEn = await fetch('https://api.tcgdex.net/v2/en/sets');
+    const setsEn = await resEn.json();
     
-    let englishSetName = "Shiny Treasure ex"; // Nome di sicurezza
-    
-    // Se TCGDex ci risponde in inglese, estraiamo il nome tradotto pulito
-    if (responseEn.ok) {
-       const enData = await responseEn.json();
-       if (enData.name) {
-         englishSetName = enData.name;
-       }
+    // Creiamo un dizionario veloce per le traduzioni
+    const enSetMap = new Map();
+    if (Array.isArray(setsEn)) {
+      for (const s of setsEn) enSetMap.set(s.id, s.name);
     }
 
-    let setData = null;
-    if (responseJa.ok) {
-      setData = await responseJa.json();
+    if (!Array.isArray(setsJa)) {
+      return NextResponse.json({ error: 'Nessun dato trovato' }, { status: 404 });
     }
 
-    let cardsToInsert = [];
-    let totalCards = 190;
-    let logoUrl = "";
+    let count = 0;
+    // 3. Salviamo tutti i set nel database
+    for (const set of setsJa) {
+      const translatedName = enSetMap.get(set.id) || set.name;
 
-    if (setData && setData.cards) {
-      cardsToInsert = setData.cards;
-      totalCards = setData.cardCount?.total || totalCards;
-      logoUrl = setData.logo ? `${setData.logo}.png` : "";
-    } else {
-      // Fallback in caso di API offline
-      cardsToInsert = [
-        { id: 'sv4a-349', name: 'Charizard ex (SSR)', image: 'https://assets.tcgdex.net/ja/sv/sv4a/349' },
-        { id: 'sv4a-350', name: 'Mew ex (SSR)', image: 'https://assets.tcgdex.net/ja/sv/sv4a/350' },
-        { id: 'sv4a-348', name: 'Pikachu (S)', image: 'https://assets.tcgdex.net/ja/sv/sv4a/348' },
-        { id: 'sv4a-330', name: 'Iono (SAR)', image: 'https://assets.tcgdex.net/ja/sv/sv4a/330' }
-      ];
-    }
-
-    // 3. Salviamo (o aggiorniamo) il Set nel database usando ESCLUSIVAMENTE il nome in inglese
-    await prisma.set.upsert({
-      where: { id: 'sv4a' },
-      update: { 
-        name: englishSetName // <-- MAGIA: Se il set esiste già in giapponese, lo rinomina in inglese!
-      }, 
-      create: {
-        id: 'sv4a',
-        name: englishSetName,
-        series: 'Scarlet & Violet',
-        totalCards: totalCards,
-        releaseDate: '2023-12-01',
-        logoUrl: logoUrl,
-      },
-    });
-
-    let insertedCount = 0;
-
-    // 4. Inseriamo le carte nel Database Prisma (mantenendo i loro nomi originali come hai chiesto)
-    for (const card of cardsToInsert) {
-      const cardId = `${card.id}-JP`;
-      const imageUrl = card.image ? `${card.image}/high.webp` : 'https://via.placeholder.com/250';
-
-      await prisma.card.upsert({
-        where: { id: cardId },
-        update: {}, // Le carte non le tocchiamo se ci sono già
+      await prisma.set.upsert({
+        where: { id: set.id },
+        update: { language: 'JP', name: translatedName }, 
         create: {
-          id: cardId,
-          name: card.name,
-          supertype: 'Pokémon',
-          rarity: 'Special Illustration Rare',
-          language: 'JP',
-          priceUsd: 0, 
-          imageUrl: imageUrl,
-          setId: 'sv4a',
+          id: set.id,
+          name: translatedName,
+          series: set.series?.name || 'Sconosciuta',
+          totalCards: set.cardCount?.total || 0,
+          releaseDate: set.releaseDate || '1996-01-01',
+          logoUrl: set.logo ? `${set.logo}.png` : '',
+          language: 'JP' // Taggato come set Giapponese!
         },
       });
-      insertedCount++;
+      count++;
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Banzai! 🇯🇵 Il set è stato rinominato in "${englishSetName}".` 
-    });
-
+    return NextResponse.json({ success: true, message: `Magia completata! ${count} Espansioni Giapponesi aggiunte all'archivio.` });
   } catch (error) {
-    console.error("Errore Sync JP:", error);
-    return NextResponse.json({ error: 'Errore interno durante il download' }, { status: 500 });
+    console.error("Errore Sync JP Sets:", error);
+    return NextResponse.json({ error: 'Errore interno' }, { status: 500 });
   }
 }
