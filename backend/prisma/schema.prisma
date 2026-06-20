@@ -1,13 +1,11 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// Schema UNIFICATO (da usare sia in backend che in pokedex-next)
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  // NON inserire l'URL qui in Prisma 7!
+  // NON inserire l'URL qui in Prisma 7! (Usa il file .env)
 }
 
 model User {
@@ -28,19 +26,21 @@ model Set {
   totalCards  Int      
   releaseDate String   
   logoUrl     String?  
-  symbolUrl   String?  
+  symbolUrl   String?  // Recuperato dal backend
+  language    String   @default("EN") // Recuperato dal frontend
   cards       Card[]   
 }
 
 model Card {
   id         String     @id 
   name       String     
-  supertype  String  
-  subtypes   String[]   
+  supertype  String?  
+  subtypes   String[]   // Recuperato dal backend (fondamentale per le carte ex, V, ecc.)
   rarity     String?
-  language   String     @default("IT") // Aggiunto per filtrare IT/JP
   priceUsd   Float?     
-  imageUrl   String     
+  imageUrl   String?     
+  language   String     @default("EN") 
+  hasReverse Boolean    @default(false) 
   setId      String     
   set        Set        @relation(fields: [setId], references: [id])
   userCards  UserCard[] 
@@ -53,7 +53,9 @@ model UserCard {
   cardId    String
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
   quantity  Int      @default(1) 
+  variant   String   @default("Normal") 
+  condition String   @default("NM")     
   createdAt DateTime @default(now())
 
-  @@unique([userId, cardId]) 
+  @@unique([userId, cardId, variant]) 
 }

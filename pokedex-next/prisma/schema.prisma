@@ -1,13 +1,11 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// Schema UNIFICATO (da usare sia in backend che in pokedex-next)
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
- 
+  // NON inserire l'URL qui in Prisma 7! (Usa il file .env)
 }
 
 model User {
@@ -22,28 +20,30 @@ model User {
 }
 
 model Set {
-  id          String     @id
+  id          String   @id 
   name        String
-  series      String
-  totalCards  Int
-  releaseDate String
-  logoUrl     String?
-  language    String     @default("EN") 
-  cards       Card[]
+  series      String   
+  totalCards  Int      
+  releaseDate String   
+  logoUrl     String?  
+  symbolUrl   String?  // Recuperato dal backend
+  language    String   @default("EN") // Recuperato dal frontend
+  cards       Card[]   
 }
 
 model Card {
-  id          String     @id
-  name        String
-  supertype   String?
-  rarity      String?
-  priceUsd    Float?
-  imageUrl    String?
-  language    String     @default("EN") 
-  hasReverse  Boolean    @default(false) // AGGIUNTO PER I MASTER SET
-  setId       String
-  set         Set        @relation(fields: [setId], references: [id])
-  userCards   UserCard[]
+  id         String     @id 
+  name       String     
+  supertype  String?  
+  subtypes   String[]   // Recuperato dal backend (fondamentale per le carte ex, V, ecc.)
+  rarity     String?
+  priceUsd   Float?     
+  imageUrl   String?     
+  language   String     @default("EN") 
+  hasReverse Boolean    @default(false) 
+  setId      String     
+  set        Set        @relation(fields: [setId], references: [id])
+  userCards  UserCard[] 
 }
 
 model UserCard {
@@ -53,10 +53,9 @@ model UserCard {
   cardId    String
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
   quantity  Int      @default(1) 
-  variant   String   @default("Normal") // AGGIUNTO (Es. "Normal", "Reverse Holo")
-  condition String   @default("NM")     // AGGIUNTO (Condizione: NM, PL, ecc.)
+  variant   String   @default("Normal") 
+  condition String   @default("NM")     
   createdAt DateTime @default(now())
 
-  // MODIFICATO: ora include "variant" così puoi salvare Normale e Reverse della stessa carta
   @@unique([userId, cardId, variant]) 
 }

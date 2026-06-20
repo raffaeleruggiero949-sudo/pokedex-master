@@ -1,54 +1,59 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// Mappa degli ID dei set giapponesi con i nomi che desideri in inglese
+const setTranslations: Record<string, string> = {
+  // Esempi basati sulle espansioni reali
+  "sv4a": "Shiny Treasure ex",
+  "s12a": "VSTAR Universe",
+  "s8b": "VMAX Climax",
+  "s4a": "Shiny Star V",
+  "sv2a": "Pokémon Card 151",
+  "sv5k": "Wild Force",
+  "sv5m": "Cyber Judge",
+  "sv6": "Mask of Change",
+  "sv6a": "Night Wanderer",
+  "sv7": "Stellar Miracle",
+  // Inserisci qui l'ID esatto del set che citavi (es. se "mega dream ex" ha id "sm8b" o simile)
+  "ID_DEL_SET_QUI": "Ascended Hero", 
+};
+
 export async function GET() {
   try {
-    // 1. Scarichiamo gli elenchi UFFICIALI da TCGDex per avere la verità assoluta
-    const [jaRes, enRes] = await Promise.all([
-      fetch('https://api.tcgdex.net/v2/ja/sets'),
-      fetch('https://api.tcgdex.net/v2/en/sets')
-    ]);
+    let updatedSets = 0;
+    const results = [];
 
-    const jaSets = await jaRes.json();
-    const enSets = await enRes.json();
+    for (const [setId, englishName] of Object.entries(setTranslations)) {
+      // Controlliamo prima se il set esiste nel database
+      const existingSet = await prisma.set.findUnique({
+        where: { id: setId }
+      });
 
-    // 2. Creiamo una lista di ID per controllarli velocemente
-    const jpIds = new Set(jaSets.map((s: any) => s.id.toLowerCase()));
-    const enIds = new Set(enSets.map((s: any) => s.id.toLowerCase()));
-
-    const dbSets = await prisma.set.findMany();
-    let fixedCount = 0;
-
-    // 3. Controlliamo e correggiamo ogni set nel tuo database
-    for (const set of dbSets) {
-      const setIdLower = set.id.toLowerCase();
-      let correctLanguage = set.language;
-
-      // Se l'ID è nella lista ufficiale giapponese, DEVE essere JP
-      if (jpIds.has(setIdLower)) {
-        correctLanguage = 'JP';
-      } 
-      // Se l'ID è nella lista ufficiale inglese, DEVE essere EN
-      else if (enIds.has(setIdLower)) {
-        correctLanguage = 'EN';
-      }
-
-      // Se la lingua nel DB non corrisponde a quella reale, la sovrascriviamo
-      if (set.language !== correctLanguage) {
+      if (existingSet) {
+        // Se esiste, aggiorniamo il nome (e impostiamo la lingua su EN per coerenza)
         await prisma.set.update({
-          where: { id: set.id },
-          data: { language: correctLanguage }
+          where: { id: setId },
+          data: { 
+            name: englishName,
+            language: "EN" 
+          }
         });
-        fixedCount++;
+        updatedSets++;
+        results.push(`${existingSet.name} -> ${englishName}`);
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `✨ Database pulito con successo! Sistemate le lingue di ${fixedCount} espansioni mischiate.`
+      message: `Aggiornati ${updatedSets} set con successo!`,
+      details: results
     });
+
   } catch (error) {
-    console.error("Errore fix DB:", error);
-    return NextResponse.json({ error: "Errore durante la pulizia del database" }, { status: 500 });
+    console.error("Errore durante l'aggiornamento dei nomi:", error);
+    return NextResponse.json(
+      { success: false, error: "Impossibile aggiornare i set." },
+      { status: 500 }
+    );
   }
 }
