@@ -3,7 +3,6 @@ import prisma from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // Questo comando dice al database: "Prendi TUTTE le carte e metti il flag lingua su Inglese"
     const result = await prisma.card.updateMany({
       data: { language: 'EN' }
     });

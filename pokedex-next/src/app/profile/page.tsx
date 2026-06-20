@@ -3,29 +3,26 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-// Importiamo i componenti per il grafico
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function Profile() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [portfolioData, setPortfolioData] = useState<any>(null);
-  const [chartData, setChartData] = useState<any[]>([]); // Dati per il grafico
+  const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Stati per i bottoni Admin
+  const [isSyncingJP, setIsSyncingJP] = useState(false);
 
-  // Funzione che genera un finto andamento storico basato sul totale attuale
   const generateChartData = (currentTotal: number) => {
     const data = [];
-    let tempValue = currentTotal * 0.7; // Facciamo finta che 30 giorni fa valesse il 30% in meno
+    let tempValue = currentTotal * 0.7; 
     for(let i = 30; i >= 0; i -= 5) {
-      data.push({
-        date: i === 0 ? 'Oggi' : `-${i}g`,
-        valore: parseFloat(tempValue.toFixed(2))
-      });
-      // Aggiungiamo una variazione casuale realistica in rialzo
+      data.push({ date: i === 0 ? 'Oggi' : `-${i}g`, valore: parseFloat(tempValue.toFixed(2)) });
       tempValue = tempValue + (Math.random() * (currentTotal * 0.1)) - (currentTotal * 0.02);
     }
-    data[data.length - 1].valore = parseFloat(currentTotal.toFixed(2)); // Garantisce che l'ultimo punto sia il totale reale
+    data[data.length - 1].valore = parseFloat(currentTotal.toFixed(2));
     return data;
   };
 
@@ -53,10 +50,34 @@ export default function Profile() {
     router.push('/');
   };
 
+  // --- FUNZIONI ADMIN ---
+  const handleFixLang = async () => {
+    try {
+      const res = await fetch('/api/fix-lang');
+      const data = await res.json();
+      alert(data.message || data.error);
+    } catch (err) {
+      alert("Errore di connessione.");
+    }
+  };
+
+  const handleSyncJP = async () => {
+    setIsSyncingJP(true);
+    try {
+      const res = await fetch('/api/sync-jp');
+      const data = await res.json();
+      alert(data.message || data.error);
+    } catch (err) {
+      alert("Errore di connessione durante il download.");
+    } finally {
+      setIsSyncingJP(false);
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">Caricamento Portfolio...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans text-slate-100 pb-16">
+    <div className="min-h-screen bg-slate-950 font-sans text-slate-100 pb-16 selection:bg-blue-500/30">
       
       {/* HEADER */}
       <header className="bg-slate-900 border-b border-slate-800 px-8 py-6 mb-8 flex justify-between items-center shadow-lg">
@@ -65,10 +86,10 @@ export default function Profile() {
           <p className="text-slate-400 mt-1">Gestisci la tua collezione e analizza il mercato.</p>
         </div>
         <div className="flex gap-4">
-          <Link href="/" className="px-6 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg font-bold transition-all text-sm">
+          <Link href="/" className="px-6 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg font-bold transition-all text-sm border border-slate-700">
             Torna al Pokédex
           </Link>
-          <button onClick={handleLogout} className="px-6 py-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white rounded-lg font-bold transition-all text-sm">
+          <button onClick={handleLogout} className="px-6 py-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white border border-red-600/50 rounded-lg font-bold transition-all text-sm">
             Esci
           </button>
         </div>
@@ -76,10 +97,8 @@ export default function Profile() {
 
       <div className="max-w-7xl mx-auto px-4 gap-8 flex flex-col">
         
-        {/* SEZIONE SUPERIORE: Statistiche e Grafico */}
+        {/* STATISTICHE E GRAFICO */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Box Valore Totale */}
           <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col justify-center shadow-xl">
             <h2 className="text-slate-400 font-bold mb-2 uppercase tracking-widest text-sm">Portfolio Value</h2>
             <p className="text-5xl font-black text-emerald-400 mb-4">${portfolioData.totalValue}</p>
@@ -88,7 +107,6 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Box Grafico Andamento (Occupa 2 colonne su schermi grandi) */}
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl lg:col-span-2 shadow-xl h-72">
             <h2 className="text-slate-400 font-bold mb-4 uppercase tracking-widest text-sm">Andamento 30 Giorni</h2>
             <ResponsiveContainer width="100%" height="85%">
@@ -155,6 +173,36 @@ export default function Profile() {
                 </Link>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* --- PANNELLO ADMIN (AZIONI SVILUPPATORE) --- */}
+        <div className="mt-16 bg-slate-900/50 border border-amber-500/30 p-6 rounded-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+          <h2 className="text-xl font-bold text-amber-500 mb-2 flex items-center gap-2">
+            ⚙️ Pannello Sviluppatore (Admin)
+          </h2>
+          <p className="text-sm text-slate-400 mb-6">
+            Usa questi comandi di manutenzione per popolare e correggere il database senza dover scrivere gli URL a mano.
+          </p>
+          
+          <div className="flex flex-col md:flex-row gap-4">
+            <button 
+              onClick={handleFixLang}
+              className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl font-bold transition-all text-sm text-left flex flex-col"
+            >
+              <span>1. Correggi Lingua Inglese</span>
+              <span className="text-xs font-normal text-slate-500 mt-1">Imposta "EN" a tutte le carte americane</span>
+            </button>
+            
+            <button 
+              onClick={handleSyncJP}
+              disabled={isSyncingJP}
+              className="px-6 py-3 bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-600/50 text-indigo-400 hover:text-white rounded-xl font-bold transition-all text-sm text-left flex flex-col disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>{isSyncingJP ? '⏳ Scaricamento in corso (attendi)...' : '2. 🇯🇵 Scarica Set Giapponese'}</span>
+              <span className="text-xs font-normal opacity-70 mt-1">Importa Shiny Treasure ex da TCGDex</span>
+            </button>
           </div>
         </div>
 

@@ -21,28 +21,27 @@ model User {
 }
 
 model Set {
-  id          String   @id 
+  id          String     @id
   name        String
-  series      String   
-  totalCards  Int      
-  releaseDate String   
-  logoUrl     String?  
-  symbolUrl   String?  
-  cards       Card[]   
+  series      String
+  totalCards  Int
+  releaseDate String
+  logoUrl     String?
+  language    String     @default("EN") // <--- AGGIUNGI QUESTA RIGA
+  cards       Card[]
 }
 
 model Card {
-  id         String     @id 
-  name       String     
-  supertype  String  
-  subtypes   String[]   
-  rarity     String?
-  language   String     @default("IT") // Aggiunto per filtrare IT/JP
-  priceUsd   Float?     
-  imageUrl   String     
-  setId      String     
-  set        Set        @relation(fields: [setId], references: [id])
-  userCards  UserCard[] 
+  id          String     @id
+  name        String
+  supertype   String?
+  rarity      String?
+  priceUsd    Float?
+  imageUrl    String?
+  language    String     @default("EN") // <--- AGGIUNGI QUESTA RIGA
+  setId       String
+  set         Set        @relation(fields: [setId], references: [id])
+  userCards   UserCard[]
 }
 
 model UserCard {

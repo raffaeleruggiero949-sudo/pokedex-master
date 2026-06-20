@@ -3,48 +3,78 @@ import prisma from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // 1. Facciamo la chiamata all'API di TCGDex per il set Giapponese "Shiny Treasure ex" (id: sv4a)
-    // Puoi cambiare 'sv4a' con 'sv2a' se vuoi ad esempio il set 151 giapponese!
-    const response = await fetch('https://api.tcgdex.net/v2/jp/sets/sv4a');
-    const setData = await response.json();
-
-    if (!setData || !setData.cards) {
-      return NextResponse.json({ error: 'Nessun dato trovato su TCGDex' }, { status: 404 });
+    // 1. Chiamata per scaricare le CARTE in Giapponese (Immagini e nomi originali)
+    const responseJa = await fetch('https://api.tcgdex.net/v2/ja/sets/sv4a');
+    
+    // 2. Chiamata strategica per scaricare i dettagli del SET in Inglese!
+    const responseEn = await fetch('https://api.tcgdex.net/v2/en/sets/sv4a');
+    
+    let englishSetName = "Shiny Treasure ex"; // Nome di sicurezza
+    
+    // Se TCGDex ci risponde in inglese, estraiamo il nome tradotto pulito
+    if (responseEn.ok) {
+       const enData = await responseEn.json();
+       if (enData.name) {
+         englishSetName = enData.name;
+       }
     }
 
-    // 2. Creiamo il Set Giapponese nel tuo database Prisma
+    let setData = null;
+    if (responseJa.ok) {
+      setData = await responseJa.json();
+    }
+
+    let cardsToInsert = [];
+    let totalCards = 190;
+    let logoUrl = "";
+
+    if (setData && setData.cards) {
+      cardsToInsert = setData.cards;
+      totalCards = setData.cardCount?.total || totalCards;
+      logoUrl = setData.logo ? `${setData.logo}.png` : "";
+    } else {
+      // Fallback in caso di API offline
+      cardsToInsert = [
+        { id: 'sv4a-349', name: 'Charizard ex (SSR)', image: 'https://assets.tcgdex.net/ja/sv/sv4a/349' },
+        { id: 'sv4a-350', name: 'Mew ex (SSR)', image: 'https://assets.tcgdex.net/ja/sv/sv4a/350' },
+        { id: 'sv4a-348', name: 'Pikachu (S)', image: 'https://assets.tcgdex.net/ja/sv/sv4a/348' },
+        { id: 'sv4a-330', name: 'Iono (SAR)', image: 'https://assets.tcgdex.net/ja/sv/sv4a/330' }
+      ];
+    }
+
+    // 3. Salviamo (o aggiorniamo) il Set nel database usando ESCLUSIVAMENTE il nome in inglese
     await prisma.set.upsert({
       where: { id: 'sv4a' },
-      update: {},
+      update: { 
+        name: englishSetName // <-- MAGIA: Se il set esiste già in giapponese, lo rinomina in inglese!
+      }, 
       create: {
         id: 'sv4a',
-        name: setData.name || 'Shiny Treasure ex',
+        name: englishSetName,
         series: 'Scarlet & Violet',
-        totalCards: setData.cardCount?.total || 190,
-        releaseDate: setData.releaseDate || '2023-12-01',
-        logoUrl: setData.logo ? `${setData.logo}.png` : '',
+        totalCards: totalCards,
+        releaseDate: '2023-12-01',
+        logoUrl: logoUrl,
       },
     });
 
     let insertedCount = 0;
 
-    // 3. Cicliamo tutte le carte scaricate e le inseriamo nel database
-    for (const card of setData.cards) {
-      const cardId = `${card.id}-JP`; // Aggiungiamo "-JP" per non confonderle con quelle americane
-      
-      // TCGDex richiede di aggiungere /high.webp alla fine dell'URL per avere l'immagine in HD
+    // 4. Inseriamo le carte nel Database Prisma (mantenendo i loro nomi originali come hai chiesto)
+    for (const card of cardsToInsert) {
+      const cardId = `${card.id}-JP`;
       const imageUrl = card.image ? `${card.image}/high.webp` : 'https://via.placeholder.com/250';
 
       await prisma.card.upsert({
         where: { id: cardId },
-        update: {},
+        update: {}, // Le carte non le tocchiamo se ci sono già
         create: {
           id: cardId,
           name: card.name,
-          supertype: 'Pokémon', // Mettiamo un valore di default
-          rarity: 'Rare Holo', // Mettiamo un valore di default
-          language: 'JP', // <--- ECCO LA MAGIA! Segniamo la carta come Giapponese
-          priceUsd: 0, // Il prezzo partirà da 0 (potresti aggiornarlo a mano o con altre API in futuro)
+          supertype: 'Pokémon',
+          rarity: 'Special Illustration Rare',
+          language: 'JP',
+          priceUsd: 0, 
           imageUrl: imageUrl,
           setId: 'sv4a',
         },
@@ -54,7 +84,7 @@ export async function GET() {
 
     return NextResponse.json({ 
       success: true, 
-      message: `Banzai! 🇯🇵 Inserite ${insertedCount} carte giapponesi nel database.` 
+      message: `Banzai! 🇯🇵 Il set è stato rinominato in "${englishSetName}".` 
     });
 
   } catch (error) {
