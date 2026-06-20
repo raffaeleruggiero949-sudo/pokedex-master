@@ -190,6 +190,7 @@ export default function Home() {
             </select>
           </div>
 
+          {/* FILTRO RARITÀ AGGIORNATO (Senza Radiant, con Mega Attack e Nuove Gold) */}
           <div className="w-full md:w-1/4">
             <select
               value={selectedRarity}
@@ -200,30 +201,32 @@ export default function Home() {
               <option value="Common">{t.common}</option>
               <option value="Uncommon">{t.uncommon}</option>
               <option value="Rare">{t.rare}</option>
-              <option value="Rare Holo">Holo</option>
+              <option value="Rare Holo">Holo / Reverse</option>
               
-              {/* Le categorie V, EX, e MEGA */}
               <optgroup label="Carte V, EX, GX, MEGA" className="bg-slate-900 text-blue-400">
                 <option value="Rare Holo V" className="text-white">V</option>
                 <option value="Rare Holo VMAX" className="text-white">VMAX</option>
-                <option value="Rare Holo VSTAR" className="text-white">VSTAR</option>
+                <option value="Rare Holo VSTAR" className="text-white">VSTAR (V ASTRO)</option>
                 <option value="Rare Holo GX" className="text-white">GX</option>
                 <option value="Rare Holo EX" className="text-white">EX / MEGA</option>
                 <option value="Double Rare" className="text-white">ex (Double Rare)</option>
               </optgroup>
 
-              {/* Le categorie Alternative, Full Art e Gold */}
-              <optgroup label="Full Art & Segrete" className="bg-slate-900 text-emerald-400">
+              <optgroup label="Full Art & Speciali" className="bg-slate-900 text-emerald-400">
                 <option value="Rare Ultra" className="text-white">Full Art / Ultra Rare</option>
                 <option value="Illustration Rare" className="text-white">Illustration Rare (IR)</option>
                 <option value="Special Illustration Rare" className="text-white">Special Ill. Rare (SIR)</option>
-                <option value="Hyper Rare" className="text-white">Hyper Rare (Nuove Gold SV)</option>
-                <option value="Rare Secret" className="text-white">Secret Rare (Vecchie Gold / Rainbow)</option>
               </optgroup>
 
-              {/* Le categorie super rare come Radiant e Gold Star */}
-              <optgroup label="Speciali & Fuoriserie" className="bg-slate-900 text-yellow-400">
-                <option value="Radiant Rare" className="text-white">Radiant Rare</option>
+              <optgroup label="Gold & Nuove Rarità" className="bg-slate-900 text-yellow-500">
+                <option value="Hyper Rare" className="text-white">Hyper Rare (Gold SV)</option>
+                <option value="Rare Secret" className="text-white">Secret Rare (Vecchie Gold / Rainbow)</option>
+                <option value="VSTAR Gold" className="text-white">VSTAR Gold (V ASTRO Gold)</option>
+                <option value="New Gold Rare" className="text-white">Nuove Gold (Chaos Rising/Perfect Order)</option>
+                <option value="Mega Attack Rare" className="text-white">Mega Attack Rare (Ascended Heroes)</option>
+              </optgroup>
+
+              <optgroup label="Fuoriserie Classiche" className="bg-slate-900 text-purple-400">
                 <option value="Amazing Rare" className="text-white">Amazing Rare</option>
                 <option value="Rare Holo Star" className="text-white">Gold Star (Classiche)</option>
                 <option value="LEGEND" className="text-white">LEGEND</option>
