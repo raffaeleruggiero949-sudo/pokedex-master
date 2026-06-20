@@ -13,6 +13,11 @@ interface Card {
   set: { name: string };
 }
 
+interface SetData {
+  id: string;
+  name: string;
+}
+
 interface MetaData {
   totalItems: number;
   currentPage: number;
@@ -36,11 +41,14 @@ const translations = {
     energy: "Energia",
     allRarities: "Tutte le Rarità",
     common: "Comuni",
-    uncommon: "Non Comuni",
-    rare: "Rare",
+    holo: "Holo / Reverse Holo",
     allCardLangs: "Qualsiasi Lingua",
     cardEn: "Inglese 🇬🇧",
     cardJp: "Giapponese 🇯🇵",
+    allSets: "Tutte le Espansioni",
+    sortBy: "Ordina per...",
+    priceAsc: "Prezzo: Più basso",
+    priceDesc: "Prezzo: Più alto",
     loading: "Ricerca nell'archivio...",
     noResults: "Nessuna carta trovata con questi filtri.",
     prev: "Indietro",
@@ -59,11 +67,14 @@ const translations = {
     energy: "Energy",
     allRarities: "All Rarities",
     common: "Common",
-    uncommon: "Uncommon",
-    rare: "Rare",
+    holo: "Holo / Reverse Holo",
     allCardLangs: "Any Language",
     cardEn: "English 🇬🇧",
     cardJp: "Japanese 🇯🇵",
+    allSets: "All Expansions",
+    sortBy: "Sort by...",
+    priceAsc: "Price: Lowest first",
+    priceDesc: "Price: Highest first",
     loading: "Searching the archive...",
     noResults: "No cards found with these filters.",
     prev: "Previous",
@@ -76,6 +87,7 @@ const translations = {
 
 export default function Home() {
   const [cards, setCards] = useState<Card[]>([]);
+  const [availableSets, setAvailableSets] = useState<SetData[]>([]); // Elenco delle espansioni
   const [meta, setMeta] = useState<MetaData | null>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -83,16 +95,28 @@ export default function Home() {
   const [uiLang, setUiLang] = useState<'IT' | 'EN'>('IT');
   const t = translations[uiLang]; 
   
+  // Tutti i filtri
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [selectedRarity, setSelectedRarity] = useState('');
   const [selectedCardLang, setSelectedCardLang] = useState(''); 
+  const [selectedSet, setSelectedSet] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
   
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Scarichiamo le espansioni al caricamento della pagina
+  useEffect(() => {
+    fetch('/api/sets')
+      .then(res => res.json())
+      .then(data => setAvailableSets(data || []))
+      .catch(err => console.error("Errore recupero sets", err));
+  }, []);
+
+  // Resetta la pagina a 1 quando cambiano i filtri
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedType, selectedRarity, selectedCardLang]);
+  }, [searchTerm, selectedType, selectedRarity, selectedCardLang, selectedSet, sortOrder]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('pokedex_user');
@@ -112,6 +136,8 @@ export default function Home() {
     if (selectedType) queryParams.append('supertype', selectedType);
     if (selectedRarity) queryParams.append('rarity', selectedRarity);
     if (selectedCardLang) queryParams.append('lang', selectedCardLang);
+    if (selectedSet) queryParams.append('setId', selectedSet);
+    if (sortOrder) queryParams.append('sort', sortOrder);
 
     fetch(`/api/cards?${queryParams.toString()}`)
       .then((response) => response.json())
@@ -124,7 +150,7 @@ export default function Home() {
         console.error("Errore API:", error);
         setLoading(false);
       });
-  }, [currentPage, searchTerm, selectedType, selectedRarity, selectedCardLang]);
+  }, [currentPage, searchTerm, selectedType, selectedRarity, selectedCardLang, selectedSet, sortOrder]);
 
   const toggleUiLanguage = () => {
     const newLang = uiLang === 'IT' ? 'EN' : 'IT';
@@ -165,88 +191,109 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-4 py-8 w-full flex-grow flex flex-col">
         
-        <div className="bg-slate-900 p-4 md:p-6 rounded-2xl border border-slate-800 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between shadow-xl">
-          
-          <div className="w-full md:w-1/3">
-            <input
-              type="text"
-              placeholder={t.search}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors"
-            />
-          </div>
-          
-          <div className="w-full md:w-1/6">
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer"
-            >
-              <option value="">{t.allTypes}</option>
-              <option value="Pokémon">Pokémon</option>
-              <option value="Trainer">{t.trainer}</option>
-              <option value="Energy">{t.energy}</option>
-            </select>
-          </div>
+        {/* BLOCCO FILTRI AVANZATI IN GRIGLIA */}
+        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 mb-8 shadow-xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            
+            {/* Ricerca (Occupa 2 colonne su schermi grandi) */}
+            <div className="lg:col-span-2">
+              <input
+                type="text"
+                placeholder={t.search}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+            
+            {/* Tipo */}
+            <div>
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer"
+              >
+                <option value="">{t.allTypes}</option>
+                <option value="Pokémon">Pokémon</option>
+                <option value="Trainer">{t.trainer}</option>
+                <option value="Energy">{t.energy}</option>
+              </select>
+            </div>
 
-          {/* FILTRO RARITÀ AGGIORNATO (Senza Radiant, con Mega Attack e Nuove Gold) */}
-          <div className="w-full md:w-1/4">
-            <select
-              value={selectedRarity}
-              onChange={(e) => setSelectedRarity(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer"
-            >
-              <option value="">{t.allRarities}</option>
-              <option value="Common">{t.common}</option>
-              <option value="Uncommon">{t.uncommon}</option>
-              <option value="Rare">{t.rare}</option>
-              <option value="Rare Holo">Holo / Reverse</option>
-              
-              <optgroup label="Carte V, EX, GX, MEGA" className="bg-slate-900 text-blue-400">
-                <option value="Rare Holo V" className="text-white">V</option>
-                <option value="Rare Holo VMAX" className="text-white">VMAX</option>
-                <option value="Rare Holo VSTAR" className="text-white">VSTAR (V ASTRO)</option>
-                <option value="Rare Holo GX" className="text-white">GX</option>
-                <option value="Rare Holo EX" className="text-white">EX / MEGA</option>
-                <option value="Double Rare" className="text-white">ex (Double Rare)</option>
-              </optgroup>
+            {/* Rarità */}
+            <div>
+              <select
+                value={selectedRarity}
+                onChange={(e) => setSelectedRarity(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer"
+              >
+                <option value="">{t.allRarities}</option>
+                <option value="Common">{t.common}</option>
+                <option value="Rare Holo">{t.holo}</option>
+                
+                <optgroup label="Era Spada e Scudo (V)" className="bg-slate-900 text-blue-400">
+                  <option value="Rare Holo V" className="text-white">V (Rara V)</option>
+                  <option value="Rare Holo VMAX" className="text-white">VMAX (Tripla Rara ★★★)</option>
+                  <option value="Rare Holo VSTAR" className="text-white">VSTAR (Rara VSTAR)</option>
+                </optgroup>
 
-              <optgroup label="Full Art & Speciali" className="bg-slate-900 text-emerald-400">
-                <option value="Rare Ultra" className="text-white">Full Art / Ultra Rare</option>
-                <option value="Illustration Rare" className="text-white">Illustration Rare (IR)</option>
-                <option value="Special Illustration Rare" className="text-white">Special Ill. Rare (SIR)</option>
-              </optgroup>
+                <optgroup label="Illustrazioni Speciali & Alt Art" className="bg-slate-900 text-emerald-400">
+                  <option value="Illustration Rare" className="text-white">IR (Illustration Rare ★)</option>
+                  <option value="Special Illustration Rare" className="text-white">SIR (Special Ill. Rare ★★)</option>
+                  <option value="Alternative Art" className="text-white">Alternative Art (Alt Art)</option>
+                  <option value="Character Rare" className="text-white">CHR / CSR (Character Rare)</option>
+                </optgroup>
 
-              <optgroup label="Gold & Nuove Rarità" className="bg-slate-900 text-yellow-500">
-                <option value="Hyper Rare" className="text-white">Hyper Rare (Gold SV)</option>
-                <option value="Rare Secret" className="text-white">Secret Rare (Vecchie Gold / Rainbow)</option>
-                <option value="VSTAR Gold" className="text-white">VSTAR Gold (V ASTRO Gold)</option>
-                <option value="New Gold Rare" className="text-white">Nuove Gold (Chaos Rising/Perfect Order)</option>
-                <option value="Mega Attack Rare" className="text-white">Mega Attack Rare (Ascended Heroes)</option>
-              </optgroup>
+                <optgroup label="Ultrarare, Gold & Rainbow" className="bg-slate-900 text-yellow-500">
+                  <option value="Rare Ultra" className="text-white">Full Art (Ultrarara ★★)</option>
+                  <option value="Rare Rainbow" className="text-white">Rainbow (Rara Arcobaleno)</option>
+                  <option value="Hyper Rare" className="text-white">Gold / UR (Iper Rara ★★★)</option>
+                </optgroup>
 
-              <optgroup label="Fuoriserie Classiche" className="bg-slate-900 text-purple-400">
-                <option value="Amazing Rare" className="text-white">Amazing Rare</option>
-                <option value="Rare Holo Star" className="text-white">Gold Star (Classiche)</option>
-                <option value="LEGEND" className="text-white">LEGEND</option>
-              </optgroup>
-            </select>
-          </div>
+                <optgroup label="EX, GX, Radiant & Shiny" className="bg-slate-900 text-purple-400">
+                  <option value="Rare Holo EX" className="text-white">EX / Mega (Era XY / N&B)</option>
+                  <option value="Rare Holo GX" className="text-white">GX / Tag Team (Era Sole e Luna)</option>
+                  <option value="Radiant Rare" className="text-white">Radiant (Rara Lucente)</option>
+                  <option value="Shiny Rare" className="text-white">Shiny Vault / Shiny Treasure</option>
+                </optgroup>
 
-          <div className="w-full md:w-1/4">
-            <select
-              value={selectedCardLang}
-              onChange={(e) => setSelectedCardLang(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer"
-            >
-              <option value="">{t.allCardLangs}</option>
-              <option value="EN">{t.cardEn}</option>
-              <option value="JP">{t.cardJp}</option>
-            </select>
+                <optgroup label="Vintage Classico" className="bg-slate-900 text-orange-400">
+                  <option value="Rare Holo Star" className="text-white">Gold Star (Pokémon Stella ★)</option>
+                </optgroup>
+              </select>
+            </div>
+
+            {/* Set / Espansione */}
+            <div>
+              <select
+                value={selectedSet}
+                onChange={(e) => setSelectedSet(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer"
+              >
+                <option value="">{t.allSets}</option>
+                {availableSets.map(set => (
+                  <option key={set.id} value={set.id}>{set.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Ordinamento Prezzo */}
+            <div>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500 transition-colors cursor-pointer"
+              >
+                <option value="">{t.sortBy}</option>
+                <option value="price_desc">{t.priceDesc}</option>
+                <option value="price_asc">{t.priceAsc}</option>
+              </select>
+            </div>
+
           </div>
         </div>
 
+        {/* GRIGLIA DELLE CARTE */}
         {loading && cards.length === 0 ? (
           <div className="flex-grow flex items-center justify-center">
             <div className="text-2xl text-slate-500 animate-pulse font-bold">{t.loading}</div>
@@ -287,6 +334,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* PAGINAZIONE */}
         {meta && meta.totalPages > 1 && (
           <div className="mt-auto flex justify-center items-center space-x-6 bg-slate-900 p-4 rounded-full border border-slate-800 w-fit mx-auto shadow-lg">
             <button
