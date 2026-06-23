@@ -6,6 +6,7 @@ import { SetsModule } from './sets/sets.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule'; // Importato per i prezzi automatici
 import { AuthModule } from './auth/auth.module';
+import { CollectionModule } from './collection/collection.module';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { AuthModule } from './auth/auth.module';
     CardsModule,
     SetsModule,
     ScheduleModule.forRoot(),
-    AuthModule, // Inizializza il Cron Job
+    AuthModule,
+    CollectionModule, // Inizializza il Cron Job
   ],
   controllers: [AppController],
   providers: [AppService],
