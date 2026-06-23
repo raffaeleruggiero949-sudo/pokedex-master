@@ -32,7 +32,7 @@ interface User {
 
 const translations = {
   IT: {
-    subtitle: "Esplora l'archivio globale delle carte.",
+    subtitle: "Esplora l'archivio globale delle carte e completa i tuoi masterset.",
     login: "Accedi / Registrati",
     profile: "Profilo di",
     search: "Cerca per nome (es. Charizard)...",
@@ -43,7 +43,7 @@ const translations = {
     common: "Comuni",
     holo: "Holo / Reverse Holo",
     allSets: "Tutte le Espansioni",
-    searchSet: "Scrivi per cercare un set...",
+    searchSet: "Scrivi per cercare un'espansione...",
     sortBy: "Ordina per...",
     priceAsc: "Prezzo: Più basso",
     priceDesc: "Prezzo: Più alto",
@@ -56,7 +56,7 @@ const translations = {
     unknown: "Sconosciuto"
   },
   EN: {
-    subtitle: "Explore the global card archive.",
+    subtitle: "Explore the global card archive and complete your mastersets.",
     login: "Login / Register",
     profile: "Profile of",
     search: "Search by name (e.g. Charizard)...",
@@ -67,7 +67,7 @@ const translations = {
     common: "Common",
     holo: "Holo / Reverse Holo",
     allSets: "All Expansions",
-    searchSet: "Type to search a set...",
+    searchSet: "Type to search an expansion...",
     sortBy: "Sort by...",
     priceAsc: "Price: Lowest first",
     priceDesc: "Price: Highest first",
@@ -97,12 +97,31 @@ export default function Home() {
   const [selectedSet, setSelectedSet] = useState('');
   const [sortOrder, setSortOrder] = useState('');
   
-  // Stati per il Custom Dropdown dei Set
   const [setSearchInput, setSetSearchInput] = useState('');
   const [isSetDropdownOpen, setIsSetDropdownOpen] = useState(false);
   
   const [currentPage, setCurrentPage] = useState(1);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // 1. CARICAMENTO INIZIALE: Recupera le ricerche e le impostazioni salvate
+  useEffect(() => {
+    setSearchTerm(sessionStorage.getItem('pokedex_search') || '');
+    setSelectedType(sessionStorage.getItem('pokedex_type') || '');
+    setSelectedRarity(sessionStorage.getItem('pokedex_rarity') || '');
+    setSelectedSet(sessionStorage.getItem('pokedex_set') || '');
+    setSortOrder(sessionStorage.getItem('pokedex_sort') || '');
+    setCurrentPage(parseInt(sessionStorage.getItem('pokedex_page') || '1', 10));
+
+    const storedUser = localStorage.getItem('pokedex_user');
+    if (storedUser) setUser(JSON.parse(storedUser));
+
+    const savedUiLang = localStorage.getItem('pokedex_ui_lang');
+    if (savedUiLang === 'EN' || savedUiLang === 'IT') setUiLang(savedUiLang);
+
+    setIsInitialized(true);
+  }, []);
+
+  // 2. RECUPERO DEI SET
   useEffect(() => {
     fetch('/api/sets')
       .then(res => res.json())
@@ -110,7 +129,6 @@ export default function Home() {
         if (Array.isArray(data)) {
           setAvailableSets(data);
         } else {
-          console.error("L'API non ha restituito un array di Set:", data);
           setAvailableSets([]);
         }
       })
@@ -120,16 +138,9 @@ export default function Home() {
       });
   }, []);
 
+  // 3. RECUPERO DELLE CARTE (si attiva solo dopo l'inizializzazione)
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedType, selectedRarity, selectedSet, sortOrder]);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('pokedex_user');
-    if (storedUser) setUser(JSON.parse(storedUser));
-
-    const savedUiLang = localStorage.getItem('pokedex_ui_lang');
-    if (savedUiLang === 'EN' || savedUiLang === 'IT') setUiLang(savedUiLang);
+    if (!isInitialized) return;
 
     setLoading(true);
 
@@ -156,7 +167,35 @@ export default function Home() {
         setCards([]);
         setLoading(false);
       });
-  }, [currentPage, searchTerm, selectedType, selectedRarity, selectedSet, sortOrder]);
+  }, [currentPage, searchTerm, selectedType, selectedRarity, selectedSet, sortOrder, isInitialized]);
+
+  // --- FUNZIONI DI GESTIONE STATO E SALVATAGGIO ---
+
+  const updateFilterAndStorage = (key: string, value: string, setter: React.Dispatch<React.SetStateAction<string>>) => {
+    setter(value);
+    setCurrentPage(1);
+    sessionStorage.setItem(key, value);
+    sessionStorage.setItem('pokedex_page', '1');
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => updateFilterAndStorage('pokedex_search', e.target.value, setSearchTerm);
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => updateFilterAndStorage('pokedex_type', e.target.value, setSelectedType);
+  const handleRarityChange = (e: React.ChangeEvent<HTMLSelectElement>) => updateFilterAndStorage('pokedex_rarity', e.target.value, setSelectedRarity);
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => updateFilterAndStorage('pokedex_sort', e.target.value, setSortOrder);
+
+  const handleSetSelect = (setId: string) => {
+    setSelectedSet(setId);
+    setSetSearchInput('');
+    setIsSetDropdownOpen(false);
+    setCurrentPage(1);
+    sessionStorage.setItem('pokedex_set', setId);
+    sessionStorage.setItem('pokedex_page', '1');
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    sessionStorage.setItem('pokedex_page', newPage.toString());
+  };
 
   const toggleUiLanguage = () => {
     const newLang = uiLang === 'IT' ? 'EN' : 'IT';
@@ -167,6 +206,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 font-sans text-slate-100 flex flex-col selection:bg-blue-500/30">
       
+      {/* HEADER */}
       <header className="bg-slate-900 border-b border-slate-800 px-8 py-6 sticky top-0 z-50 flex flex-col md:flex-row justify-between items-center gap-4 shadow-sm">
         <div className="text-center md:text-left">
           <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">
@@ -205,18 +245,24 @@ export default function Home() {
               type="text"
               placeholder={t.search}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="lg:col-span-2 w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors"
+              onChange={handleSearchChange}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors"
             />
             
-            <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer">
+            <select value={selectedType} onChange={handleTypeChange} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer">
               <option value="">{t.allTypes}</option>
               <option value="Pokémon">Pokémon</option>
               <option value="Trainer">{t.trainer}</option>
               <option value="Energy">{t.energy}</option>
             </select>
 
-            {/* NUOVO COMPONENTE: DROPDOWN RICERCABILE PER I SET */}
+            <select value={selectedRarity} onChange={handleRarityChange} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer">
+              <option value="">{t.allRarities}</option>
+              <option value="Common">{t.common}</option>
+              <option value="Rare Holo">{t.holo}</option>
+            </select>
+
+            {/* DROPDOWN RICERCABILE PER I SET */}
             <div className="relative w-full">
               <input
                 type="text"
@@ -225,13 +271,12 @@ export default function Home() {
                 onChange={(e) => {
                   setSetSearchInput(e.target.value);
                   setIsSetDropdownOpen(true);
-                  if (e.target.value === '') setSelectedSet('');
+                  if (e.target.value === '') handleSetSelect('');
                 }}
                 onFocus={() => {
                   setIsSetDropdownOpen(true);
-                  setSetSearchInput(''); // Permette di cercare da zero quando clicchi
+                  setSetSearchInput('');
                 }}
-                // Il timeout permette al click sulle opzioni di funzionare prima di chiudere il menu
                 onBlur={() => setTimeout(() => setIsSetDropdownOpen(false), 200)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors placeholder:text-slate-500"
               />
@@ -240,7 +285,7 @@ export default function Home() {
                 <div className="absolute z-10 w-full mt-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
                   <div
                     className="px-4 py-3 hover:bg-slate-800 cursor-pointer text-slate-400 border-b border-slate-800 font-medium"
-                    onClick={() => { setSelectedSet(''); setSetSearchInput(''); setIsSetDropdownOpen(false); }}
+                    onClick={() => handleSetSelect('')}
                   >
                     {t.allSets}
                   </div>
@@ -250,7 +295,7 @@ export default function Home() {
                       <div
                         key={set.id}
                         className="px-4 py-3 hover:bg-blue-600 hover:text-white cursor-pointer text-slate-300 transition-colors"
-                        onClick={() => { setSelectedSet(set.id); setSetSearchInput(''); setIsSetDropdownOpen(false); }}
+                        onClick={() => handleSetSelect(set.id)}
                       >
                         {set.name}
                       </div>
@@ -262,7 +307,7 @@ export default function Home() {
               )}
             </div>
 
-            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer">
+            <select value={sortOrder} onChange={handleSortChange} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer">
               <option value="">{t.sortBy}</option>
               <option value="price_desc">{t.priceDesc}</option>
               <option value="price_asc">{t.priceAsc}</option>
@@ -290,7 +335,6 @@ export default function Home() {
                   href={`/cards/${card.id}`} 
                   className="group bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 transition-all flex flex-col h-full cursor-pointer"
                 >
-                  {/* Immagine Carta */}
                   <div className="relative w-full aspect-[63/88] mb-4 overflow-hidden rounded-xl bg-slate-950 border border-slate-800 group-hover:border-slate-700 transition-colors">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -301,7 +345,6 @@ export default function Home() {
                     />
                   </div>
                   
-                  {/* Dettagli Carta */}
                   <div className="flex-grow flex flex-col justify-between gap-2">
                     <div>
                       <h3 className="font-bold text-slate-100 truncate text-base" title={card.name}>
@@ -312,7 +355,6 @@ export default function Home() {
                       </p>
                     </div>
                     
-                    {/* Prezzo e Rarità */}
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-xs font-medium text-slate-500 truncate max-w-[50%]">
                         {card.rarity || ''}
@@ -336,7 +378,7 @@ export default function Home() {
             {meta && meta.totalPages > 1 && (
               <div className="flex justify-center items-center gap-4 mt-4 bg-slate-900 p-3 rounded-2xl border border-slate-800 w-fit mx-auto shadow-lg">
                 <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                   className="px-5 py-2 bg-slate-950 disabled:opacity-40 hover:bg-slate-800 border border-slate-800 rounded-xl font-bold text-sm transition-colors text-slate-300"
                 >
@@ -346,7 +388,7 @@ export default function Home() {
                   {t.page} <span className="text-white font-bold">{currentPage}</span> {t.of} <span className="text-white font-bold">{meta.totalPages}</span>
                 </span>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(meta.totalPages, p + 1))}
+                  onClick={() => handlePageChange(Math.min(meta.totalPages, currentPage + 1))}
                   disabled={currentPage === meta.totalPages}
                   className="px-5 py-2 bg-slate-950 disabled:opacity-40 hover:bg-slate-800 border border-slate-800 rounded-xl font-bold text-sm transition-colors text-slate-300"
                 >
