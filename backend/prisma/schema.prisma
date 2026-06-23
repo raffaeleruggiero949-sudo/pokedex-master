@@ -9,41 +9,41 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String?
-  email     String     @unique
+  email     String   @unique
   password  String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   userCards UserCard[]
 }
 
 model Set {
-  id          String   @id 
+  id          String  @id
   name        String
-  series      String   
-  totalCards  Int      
-  releaseDate String   
-  logoUrl     String?  
-  symbolUrl   String?  // Recuperato dal backend
-  language    String   @default("EN") // Recuperato dal frontend
-  cards       Card[]   
+  series      String
+  totalCards  Int
+  releaseDate String
+  logoUrl     String?
+  symbolUrl   String? // Recuperato dal backend
+  language    String  @default("EN") // Recuperato dal frontend
+  cards       Card[]
 }
 
 model Card {
-  id         String     @id 
-  name       String     
-  supertype  String?  
-  subtypes   String[]   // Recuperato dal backend (fondamentale per le carte ex, V, ecc.)
+  id         String     @id
+  name       String
+  supertype  String?
+  subtypes   String[] // Recuperato dal backend (fondamentale per le carte ex, V, ecc.)
   rarity     String?
-  priceUsd   Float?     
-  imageUrl   String?     
-  language   String     @default("EN") 
-  hasReverse Boolean    @default(false) 
-  setId      String     
+  priceUsd   Float?
+  imageUrl   String?
+  language   String     @default("EN")
+  hasReverse Boolean    @default(false)
+  setId      String
   set        Set        @relation(fields: [setId], references: [id])
-  userCards  UserCard[] 
+  userCards  UserCard[]
 }
 
 model UserCard {
@@ -52,10 +52,10 @@ model UserCard {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   cardId    String
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  quantity  Int      @default(1) 
-  variant   String   @default("Normal") 
-  condition String   @default("NM")     
+  quantity  Int      @default(1)
+  variant   String   @default("Normal")
+  condition String   @default("NM")
   createdAt DateTime @default(now())
 
-  @@unique([userId, cardId, variant]) 
+  @@unique([userId, cardId, variant])
 }

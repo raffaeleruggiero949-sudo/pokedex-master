@@ -5,13 +5,15 @@ import { CardsModule } from './cards/cards.module';
 import { SetsModule } from './sets/sets.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule'; // Importato per i prezzi automatici
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
     PrismaModule,
     CardsModule,
     SetsModule,
-    ScheduleModule.forRoot(), // Inizializza il Cron Job
+    ScheduleModule.forRoot(),
+    AuthModule, // Inizializza il Cron Job
   ],
   controllers: [AppController],
   providers: [AppService],
