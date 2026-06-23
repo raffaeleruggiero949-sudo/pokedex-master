@@ -1,35 +1,51 @@
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
 import prisma from '@/lib/prisma';
 
-export async function POST(request: Request) {
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string(),
+});
+
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const { email, password } = body;
+    const body = await req.json();
+    const { email, password } = loginSchema.parse(body);
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email e password sono obbligatori' }, { status: 400 });
-    }
+    // Trova utente
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return NextResponse.json({ error: "Credenziali non valide" }, { status: 401 });
 
-    // 1. Cerca l'utente nel database tramite l'email
-    const user = await prisma.user.findUnique({
-      where: { email: email },
+    // Compara password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return NextResponse.json({ error: "Credenziali non valide" }, { status: 401 });
+
+    // Genera Token
+    const token = jwt.sign(
+      { userId: user.id, email: user.email }, 
+      process.env.JWT_SECRET || 'super_segreto_di_sviluppo', 
+      { expiresIn: '7d' }
+    );
+
+    // Invia la risposta impostando il cookie HttpOnly
+    const response = NextResponse.json({ 
+      message: "Login effettuato", 
+      user: { id: user.id, name: user.name, email: user.email } 
+    }, { status: 200 });
+
+    response.cookies.set({
+      name: 'auth_token',
+      value: token,
+      httpOnly: true, // Cruciale per la sicurezza!
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7 // 7 giorni
     });
 
-    // 2. Se l'utente non esiste o la password è sbagliata, blocca l'accesso
-    if (!user || user.password !== password) {
-      return NextResponse.json({ error: 'Credenziali non valide. Riprova.' }, { status: 401 });
-    }
-
-    // 3. Rimuoviamo la password dai dati per sicurezza prima di inviarli al frontend
-    const { password: _, ...userWithoutPassword } = user;
-
-    return NextResponse.json(
-      { message: 'Login effettuato con successo!', user: userWithoutPassword },
-      { status: 200 }
-    );
-    
+    return response;
   } catch (error) {
-    console.error("Errore durante il login:", error);
-    return NextResponse.json({ error: 'Errore interno del server' }, { status: 500 });
+    return NextResponse.json({ error: "Errore durante il login" }, { status: 500 });
   }
 }

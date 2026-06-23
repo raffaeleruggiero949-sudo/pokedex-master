@@ -1,52 +1,45 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma'; 
+import bcrypt from 'bcryptjs';
+import { z } from 'zod';
+import prisma from '@/lib/prisma'; // Assicurati che il percorso sia corretto
 
-export async function POST(request: Request) {
+// Definizione dello schema di validazione
+const registerSchema = z.object({
+  name: z.string().min(2, "Il nome deve avere almeno 2 caratteri"),
+  email: z.string().email("Email non valida"),
+  password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
+});
+
+export async function POST(req: Request) {
   try {
-    // 1. Estraiamo i dati che arrivano dal tuo form
-    const body = await request.json();
-    const { name, email, password } = body;
+    const body = await req.json();
+    
+    // 1. Validazione input
+    const parsedData = registerSchema.parse(body);
 
-    // 2. Controllo di sicurezza base
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email e password sono obbligatori' },
-        { status: 400 }
-      );
-    }
-
-    // 3. Controlliamo se esiste già un utente con questa email
+    // 2. Controllo se l'utente esiste già
     const existingUser = await prisma.user.findUnique({
-      where: { email: email },
+      where: { email: parsedData.email }
     });
+    if (existingUser) return NextResponse.json({ error: "Email già in uso" }, { status: 400 });
 
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'Questa email è già registrata. Prova ad accedere.' },
-        { status: 409 }
-      );
-    }
+    // 3. Hashing della password
+    const hashedPassword = await bcrypt.hash(parsedData.password, 10);
 
-    // 4. Creiamo l'utente nel Database
+    // 4. Salvataggio nel DB
     const newUser = await prisma.user.create({
       data: {
-        name: name || null,
-        email: email,
-        password: password, 
-      },
+        name: parsedData.name,
+        email: parsedData.email,
+        password: hashedPassword,
+      }
     });
 
-    // 5. Tutto è andato a buon fine!
-    return NextResponse.json(
-      { message: 'Allenatore registrato con successo!', user: { id: newUser.id, email: newUser.email } },
-      { status: 201 }
-    );
-    
+    return NextResponse.json({ message: "Utente creato con successo" }, { status: 201 });
   } catch (error) {
-    console.error("Errore durante la registrazione:", error);
-    return NextResponse.json(
-      { error: 'Errore interno del server durante la registrazione.' },
-      { status: 500 }
-    );
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Errore interno del server" }, { status: 500 });
   }
 }
