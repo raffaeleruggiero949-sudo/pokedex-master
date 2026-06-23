@@ -40,12 +40,20 @@ export class CardsService {
           const responseData = await response.json();
           const externalCard = responseData.data;
           
-          // Estrapoliamo il prezzo di mercato
-          const newPrice = externalCard.cardmarket?.prices?.averageSellPrice 
-            || externalCard.tcgplayer?.prices?.normal?.market 
+          // Estrapoliamo l'oggetto dei prezzi di TCGPlayer
+          const tcgPrices = externalCard.tcgplayer?.prices;
+          
+          // Ricerca "in cascata": se non c'è il normal, cerca l'holofoil, poi il reverse, ecc.
+          // Priorità al mercato americano (USD), fallback su Cardmarket (EUR convertito)
+          const newPrice = tcgPrices?.normal?.market 
+            || tcgPrices?.holofoil?.market
+            || tcgPrices?.reverseHolofoil?.market
+            || tcgPrices?.unlimitedHolofoil?.market
+            || tcgPrices?.['1stEditionHolofoil']?.market
+            || externalCard.cardmarket?.prices?.averageSellPrice 
             || null;
 
-          if (newPrice) {
+          if (newPrice !== null) {
             // 3. Aggiorniamo il database tramite Prisma
             await this.prisma.card.update({
               where: { id: card.id },
