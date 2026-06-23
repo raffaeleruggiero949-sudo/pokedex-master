@@ -79,27 +79,3 @@ Per arrestare e rimuovere il container del database:
 
 Bash
 docker-compose down
-
-***
-
-### 💡 Nota importante sul Docker Compose
-Il README presuppone che tu abbia un file `docker-compose.yml` nella cartella principale del progetto per far partire PostgreSQL. Se non lo hai ancora creato, eccoti il codice standard da inserire in un nuovo file `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-services:
-  db:
-    image: postgres:15
-    container_name: pokedex_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
-      POSTGRES_DB: pokedex_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - pokedex_data:/var/lib/postgresql/data
-
-volumes:
-  pokedex_data:
