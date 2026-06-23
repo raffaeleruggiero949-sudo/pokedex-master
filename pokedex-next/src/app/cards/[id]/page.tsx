@@ -12,7 +12,11 @@ export default function CardDetails() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  
+  // Stati per la gestione dell'aggiunta/rimozione
   const [isAdding, setIsAdding] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState('Normal');
 
   // LA PORTA DEL BACK-END NESTJS
   const BACKEND_URL = 'http://localhost:3001';
@@ -44,7 +48,7 @@ export default function CardDetails() {
 
   const handleAddToPortfolio = async () => {
     if (!user) {
-      alert("⚠️ Devi prima accedere o registrarti per aggiungere carte al Masterset!");
+      alert("⚠️ Devi prima accedere o registrarti per gestire il Masterset!");
       router.push('/login');
       return;
     }
@@ -52,7 +56,6 @@ export default function CardDetails() {
     const token = localStorage.getItem('access_token');
     if (!token) {
       alert("⚠️ Sessione non valida. Effettua di nuovo il login.");
-      // Pulisco i dati corrotti/vecchi per forzare un login pulito
       localStorage.removeItem('pokedex_user');
       router.push('/login');
       return;
@@ -60,7 +63,6 @@ export default function CardDetails() {
 
     setIsAdding(true);
     try {
-      // Usiamo la porta del BACKEND (3001) per salvare i dati
       const res = await fetch(`${BACKEND_URL}/collection/add`, {
         method: 'POST',
         headers: { 
@@ -69,13 +71,13 @@ export default function CardDetails() {
         },
         body: JSON.stringify({ 
           cardId: card.id,
-          variant: "Normal", 
+          variant: selectedVariant, // Passa la variante scelta (es. PSA 10)
           condition: "NM"
         })
       });
 
       if (res.ok) {
-        alert("✅ Carta aggiunta al tuo Masterset con successo!");
+        alert(`✅ Carta (${selectedVariant}) aggiunta al tuo Masterset!`);
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(`❌ Errore: ${errData.message || "Impossibile aggiungere la carta."}`);
@@ -85,6 +87,46 @@ export default function CardDetails() {
       alert("❌ Errore di connessione al server back-end.");
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleRemoveFromPortfolio = async () => {
+    if (!user) {
+      alert("⚠️ Devi prima accedere o registrarti per gestire il Masterset!");
+      router.push('/login');
+      return;
+    }
+
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert("⚠️ Sessione non valida. Effettua di nuovo il login.");
+      localStorage.removeItem('pokedex_user');
+      router.push('/login');
+      return;
+    }
+
+    setIsRemoving(true);
+    try {
+      // Nota: encodeURIComponent è vitale perché "PSA 10" contiene uno spazio che nell'URL diventa "%20"
+      const res = await fetch(`${BACKEND_URL}/collection/remove/${card.id}/${encodeURIComponent(selectedVariant)}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}` 
+        }
+      });
+
+      if (res.ok) {
+        alert(`🗑️ Carta (${selectedVariant}) rimossa o quantità scalata con successo!`);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        // Se l'errore è un 404 significa che la carta non c'era proprio in collezione
+        alert(`❌ Impossibile rimuovere: ${errData.message || "Carta non presente in collezione."}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("❌ Errore di connessione al server back-end.");
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -149,34 +191,70 @@ export default function CardDetails() {
             </div>
           </div>
 
-          <button 
-            onClick={handleAddToPortfolio}
-            disabled={isAdding}
-            className={`w-full py-4 rounded-xl font-bold text-xl transition-all shadow-lg mb-8 flex justify-center items-center gap-3 ${
-              isAdding ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/50'
-            }`}
-          >
-            <span className="text-2xl font-normal leading-none">+</span>
-            {isAdding ? 'Aggiunta in corso...' : 'AGGIUNGI AL MASTERSET'}
-          </button>
+          {/* NUOVO PANNELLO GESTIONE COLLEZIONE */}
+          <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl mb-6">
+            <h3 className="text-white text-lg font-bold mb-4">Gestisci Collezione</h3>
+            
+            <div className="mb-4">
+              <label className="block text-slate-400 text-xs font-bold mb-2 uppercase tracking-wide">
+                Condizione / Voto
+              </label>
+              <select 
+                value={selectedVariant}
+                onChange={(e) => setSelectedVariant(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer"
+              >
+                <option value="Normal">Normale (Ungraded)</option>
+                <option value="Reverse Holo">Reverse Holo (Ungraded)</option>
+                <option value="PSA 10">Gradata: PSA 10</option>
+                <option value="PSA 9">Gradata: PSA 9</option>
+                <option value="PSA 8">Gradata: PSA 8</option>
+                <option value="BGS 10">Gradata: BGS 10</option>
+                <option value="BGS 9.5">Gradata: BGS 9.5</option>
+                <option value="CGC 10">Gradata: CGC 10</option>
+              </select>
+            </div>
+
+            <div className="flex gap-4">
+              <button 
+                onClick={handleAddToPortfolio}
+                disabled={isAdding}
+                className={`flex-1 py-3 rounded-xl font-bold text-lg transition-all shadow-lg flex justify-center items-center gap-2 ${
+                  isAdding ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/50'
+                }`}
+              >
+                <span className="text-2xl font-normal leading-none mb-1">+</span> Aggiungi
+              </button>
+              
+              <button 
+                onClick={handleRemoveFromPortfolio}
+                disabled={isRemoving}
+                className={`flex-1 py-3 rounded-xl font-bold text-lg transition-all shadow-lg flex justify-center items-center gap-2 ${
+                  isRemoving ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-red-600/10 hover:bg-red-600 border border-red-600/50 hover:border-red-600 text-red-400 hover:text-white'
+                }`}
+              >
+                <span className="text-2xl font-normal leading-none mb-1">-</span> Rimuovi
+              </button>
+            </div>
+          </div>
 
           <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
-            <h3 className="text-white text-lg font-bold mb-5">Card Details</h3>
+            <h3 className="text-white text-lg font-bold mb-5">Dettagli Tecnici</h3>
             <div className="flex flex-col gap-4">
               <div className="flex justify-between items-center pb-3 border-b border-slate-800/80">
-                <span className="text-slate-400 text-sm">Rarity</span>
+                <span className="text-slate-400 text-sm">Rarità</span>
                 <span className="text-white text-sm font-medium">{card.rarity || 'Standard'}</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-slate-800/80">
-                <span className="text-slate-400 text-sm">Type</span>
+                <span className="text-slate-400 text-sm">Tipo</span>
                 <span className="text-white text-sm font-medium">{card.supertype}</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-slate-800/80">
-                <span className="text-slate-400 text-sm">Series</span>
+                <span className="text-slate-400 text-sm">Serie</span>
                 <span className="text-white text-sm font-medium">{card.set?.series || 'Pokémon TCG'}</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-slate-800/80">
-                <span className="text-slate-400 text-sm">Release Date</span>
+                <span className="text-slate-400 text-sm">Data di Rilascio</span>
                 <span className="text-white text-sm font-medium">{card.set?.releaseDate || 'N/D'}</span>
               </div>
             </div>

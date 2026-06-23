@@ -13,8 +13,6 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   
   const [isSyncingJP, setIsSyncingJP] = useState(false);
-  
-  // NUOVO STATO REACT per l'input di testo (sostituisce il pop-up!)
   const [localSetId, setLocalSetId] = useState('');
 
   const generateChartData = (currentTotal: number) => {
@@ -49,66 +47,17 @@ export default function Profile() {
 
   const handleLogout = () => {
     localStorage.removeItem('pokedex_user');
+    localStorage.removeItem('access_token');
     router.push('/');
   };
 
-  const handleFixLang = async () => {
-    try {
-      const res = await fetch('/api/fix-lang');
-      const data = await res.json();
-      alert(data.message || data.error);
-    } catch (err) {
-      alert("Errore di connessione.");
-    }
-  };
-
-  const handleSyncJP = async () => {
-    setIsSyncingJP(true);
-    try {
-      const res = await fetch('/api/sync-jp');
-      const data = await res.json();
-      alert(data.message || data.error);
-    } catch (err) {
-      alert("Errore di connessione durante il download.");
-    } finally {
-      setIsSyncingJP(false);
-    }
-  };
-
-  // Niente più pop-up, usiamo il valore scritto nella casella!
-  const handleSyncLocal = async () => {
-    if (!localSetId) {
-      alert("⚠️ Inserisci prima l'ID del set nella casella di testo in basso (es. s12a)!");
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/sync-local', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ setId: localSetId.toLowerCase(), lang: 'JP' })
-      });
-      const data = await res.json();
-      
-      if (res.ok) {
-        alert("✅ " + data.message);
-        setLocalSetId(''); // Svuota la casella dopo il successo
-      } else {
-        alert("❌ Errore: " + data.error);
-      }
-    } catch (err) {
-      alert("Errore durante la connessione al server.");
-    }
-  };
-
-  const handleCreateLocalFile = async () => {
-    try {
-      const res = await fetch('/api/create-local-file');
-      const data = await res.json();
-      alert(data.message || data.error);
-    } catch (err) {
-      alert("Errore di connessione durante la creazione del file.");
-    }
+  // Calcola il prezzo mostrato per la singola carta
+  const getCardDisplayPrice = (uc: any) => {
+    if (!uc.card.priceUsd) return '0.00';
+    let price = uc.card.priceUsd;
+    if (uc.variant === 'PSA 10' || uc.variant === 'BGS 10' || uc.variant === 'CGC 10') price *= 2.2;
+    else if (uc.variant === 'PSA 9' || uc.variant === 'BGS 9.5') price *= 1.15;
+    return price.toFixed(2);
   };
 
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">Caricamento Portfolio...</div>;
@@ -192,20 +141,40 @@ export default function Profile() {
         <div>
           <h2 className="text-2xl font-bold mb-6 mt-4">🗂️ Carte Collezionate ({portfolioData.cards.reduce((acc: number, curr: any) => acc + curr.quantity, 0)})</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {portfolioData.cards.map((uc: any) => (
-              <div key={uc.id} className="relative group">
-                <div className="absolute -top-2 -right-2 z-10 bg-slate-900 text-white text-xs font-black w-8 h-8 rounded-full flex items-center justify-center border-2 border-slate-700 shadow-xl">
-                  x{uc.quantity}
-                </div>
-                <Link href={`/cards/${uc.card.id}`}>
-                  <div className="bg-slate-900 p-2 rounded-xl border border-slate-800 hover:border-blue-500 transition-all cursor-pointer h-full flex flex-col">
-                    <img src={uc.card.imageUrl} alt={uc.card.name} className="w-full h-auto rounded-lg mb-2" />
-                    <h3 className="font-bold text-sm truncate">{uc.card.name}</h3>
-                    <p className="text-emerald-400 font-bold text-sm mt-auto">${uc.card.priceUsd}</p>
+            {portfolioData.cards.map((uc: any) => {
+              const isGraded = uc.variant?.includes('PSA') || uc.variant?.includes('BGS') || uc.variant?.includes('CGC');
+              
+              return (
+                <div key={uc.id} className="relative group">
+                  
+                  {/* Badge della quantità */}
+                  <div className="absolute -top-2 -right-2 z-10 bg-slate-900 text-white text-xs font-black w-8 h-8 rounded-full flex items-center justify-center border-2 border-slate-700 shadow-xl">
+                    x{uc.quantity}
                   </div>
-                </Link>
-              </div>
-            ))}
+                  
+                  {/* NUOVO: Badge della Variante/Gradazione */}
+                  {uc.variant && uc.variant !== 'Normal' && (
+                    <div className={`absolute -top-2 -left-2 z-10 text-[10px] font-black px-2 py-1 rounded-md shadow-xl border uppercase tracking-wider ${
+                      isGraded 
+                        ? 'bg-amber-500 text-slate-950 border-amber-300' 
+                        : 'bg-indigo-500 text-white border-indigo-400'
+                    }`}>
+                      {uc.variant}
+                    </div>
+                  )}
+
+                  <Link href={`/cards/${uc.card.id}`}>
+                    <div className={`bg-slate-900 p-2 rounded-xl border transition-all cursor-pointer h-full flex flex-col ${
+                      isGraded ? 'border-amber-500/50 hover:border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]' : 'border-slate-800 hover:border-blue-500'
+                    }`}>
+                      <img src={uc.card.imageUrl} alt={uc.card.name} className="w-full h-auto rounded-lg mb-2" />
+                      <h3 className="font-bold text-sm truncate">{uc.card.name}</h3>
+                      <p className="text-emerald-400 font-bold text-sm mt-auto">${getCardDisplayPrice(uc)}</p>
+                    </div>
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
