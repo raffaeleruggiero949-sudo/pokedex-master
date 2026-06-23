@@ -13,7 +13,6 @@ export default function CardDetails() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   
-  // Stati per la gestione dell'aggiunta/rimozione
   const [isAdding, setIsAdding] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState('Normal');
@@ -71,7 +70,7 @@ export default function CardDetails() {
         },
         body: JSON.stringify({ 
           cardId: card.id,
-          variant: selectedVariant, // Passa la variante scelta (es. PSA 10)
+          variant: selectedVariant,
           condition: "NM"
         })
       });
@@ -107,7 +106,6 @@ export default function CardDetails() {
 
     setIsRemoving(true);
     try {
-      // Nota: encodeURIComponent è vitale perché "PSA 10" contiene uno spazio che nell'URL diventa "%20"
       const res = await fetch(`${BACKEND_URL}/collection/remove/${card.id}/${encodeURIComponent(selectedVariant)}`, {
         method: 'DELETE',
         headers: { 
@@ -119,7 +117,6 @@ export default function CardDetails() {
         alert(`🗑️ Carta (${selectedVariant}) rimossa o quantità scalata con successo!`);
       } else {
         const errData = await res.json().catch(() => ({}));
-        // Se l'errore è un 404 significa che la carta non c'era proprio in collezione
         alert(`❌ Impossibile rimuovere: ${errData.message || "Carta non presente in collezione."}`);
       }
     } catch (error) {
@@ -149,9 +146,15 @@ export default function CardDetails() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       <div className="max-w-6xl mx-auto px-4 py-6">
-        <Link href="/" className="text-slate-400 hover:text-white flex items-center gap-2 w-fit transition-colors text-lg font-medium">
+        
+        {/* MODIFICA: Ora usa router.back() invece di un Link che ti riportava alla Home */}
+        <button 
+          onClick={() => router.back()} 
+          className="text-slate-400 hover:text-white flex items-center gap-2 w-fit transition-colors text-lg font-medium outline-none"
+        >
           <span>&larr;</span> Indietro
-        </Link>
+        </button>
+
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pb-16 flex flex-col md:flex-row gap-8 lg:gap-16">
@@ -191,7 +194,6 @@ export default function CardDetails() {
             </div>
           </div>
 
-          {/* NUOVO PANNELLO GESTIONE COLLEZIONE */}
           <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl mb-6">
             <h3 className="text-white text-lg font-bold mb-4">Gestisci Collezione</h3>
             

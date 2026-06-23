@@ -10,20 +10,67 @@ export default function Profile() {
   const [user, setUser] = useState<any>(null);
   const [portfolioData, setPortfolioData] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [stats, setStats] = useState({ diff: 0, perc: 0 });
   const [loading, setLoading] = useState(true);
-  
-  const [isSyncingJP, setIsSyncingJP] = useState(false);
-  const [localSetId, setLocalSetId] = useState('');
 
-  const generateChartData = (currentTotal: number) => {
-    const data = [];
-    let tempValue = currentTotal * 0.7; 
-    for(let i = 30; i >= 0; i -= 5) {
-      data.push({ date: i === 0 ? 'Oggi' : `-${i}g`, valore: parseFloat(tempValue.toFixed(2)) });
-      tempValue = tempValue + (Math.random() * (currentTotal * 0.1)) - (currentTotal * 0.02);
+  // LA PORTA DEL BACK-END NESTJS
+  const BACKEND_URL = 'http://localhost:3001';
+
+  const generateOrLoadChartData = (userId: string, currentTotal: number) => {
+    const storageKey = `pokedex_chart_${userId}`;
+    const stored = localStorage.getItem(storageKey);
+    const today = new Date().toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+
+    let data = [];
+    if (stored) {
+      data = JSON.parse(stored);
+    } else {
+      let tempValue = currentTotal > 0 ? currentTotal * 0.7 : 10; 
+      for (let i = 6; i >= 1; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+        data.push({ date: dateStr, valore: parseFloat(tempValue.toFixed(2)) });
+        tempValue = tempValue + (Math.random() * (currentTotal * 0.1)) - (currentTotal * 0.02);
+        if (tempValue < 0) tempValue = 0;
+      }
     }
-    data[data.length - 1].valore = parseFloat(currentTotal.toFixed(2));
+
+    const lastEntry = data[data.length - 1];
+    if (lastEntry && lastEntry.date === today) {
+      lastEntry.valore = parseFloat(currentTotal.toFixed(2));
+    } else {
+      data.push({ date: today, valore: parseFloat(currentTotal.toFixed(2)) });
+    }
+
+    if (data.length > 30) data = data.slice(data.length - 30);
+    localStorage.setItem(storageKey, JSON.stringify(data));
     return data;
+  };
+
+  // Funzione isolata per caricare o ricaricare i dati (utile dopo aver eliminato una carta)
+  const fetchPortfolioData = async (userData: any) => {
+    try {
+      const res = await fetch(`/api/portfolio?userId=${userData.id}`);
+      const data = await res.json();
+      
+      setPortfolioData(data);
+      const totalNum = parseFloat(data.totalValue);
+      
+      const historyData = generateOrLoadChartData(userData.id, totalNum);
+      setChartData(historyData);
+
+      if (historyData.length > 1) {
+        const yesterdayVal = historyData[historyData.length - 2].valore;
+        const difference = totalNum - yesterdayVal;
+        const percentage = yesterdayVal > 0 ? (difference / yesterdayVal) * 100 : 0;
+        setStats({ diff: difference, perc: percentage });
+      }
+    } catch (error) {
+      console.error("Errore nel recupero dati:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -34,16 +81,34 @@ export default function Profile() {
     }
     const parsedUser = JSON.parse(storedUser);
     setUser(parsedUser);
-
-    fetch(`/api/portfolio?userId=${parsedUser.id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setPortfolioData(data);
-        const totalNum = parseFloat(data.totalValue);
-        setChartData(generateChartData(totalNum));
-        setLoading(false);
-      });
+    fetchPortfolioData(parsedUser);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
+
+  // --- NUOVA FUNZIONE: Rimozione Rapida ---
+  const handleQuickRemove = async (e: React.MouseEvent, cardId: string, variant: string) => {
+    e.preventDefault(); 
+    e.stopPropagation();
+
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/collection/remove/${cardId}/${encodeURIComponent(variant)}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        // Ricarica i dati per aggiornare UI e Grafico istantaneamente
+        fetchPortfolioData(user);
+      } else {
+        alert("Errore durante la rimozione della carta.");
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('pokedex_user');
@@ -51,7 +116,6 @@ export default function Profile() {
     router.push('/');
   };
 
-  // Calcola il prezzo mostrato per la singola carta
   const getCardDisplayPrice = (uc: any) => {
     if (!uc.card.priceUsd) return '0.00';
     let price = uc.card.priceUsd;
@@ -61,6 +125,8 @@ export default function Profile() {
   };
 
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">Caricamento Portfolio...</div>;
+
+  const isPositive = stats.diff >= 0;
 
   return (
     <div className="min-h-screen bg-slate-950 font-sans text-slate-100 pb-16 selection:bg-blue-500/30">
@@ -85,24 +151,43 @@ export default function Profile() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col justify-center shadow-xl">
             <h2 className="text-slate-400 font-bold mb-2 uppercase tracking-widest text-sm">Portfolio Value</h2>
-            <p className="text-5xl font-black text-emerald-400 mb-4">${portfolioData.totalValue}</p>
-            <div className="bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full w-fit text-sm font-bold border border-emerald-500/20">
-              +14.2% questo mese
+            <p className="text-5xl font-black text-white mb-4">${portfolioData?.totalValue}</p>
+            
+            <div className={`px-3 py-1 rounded-full w-fit text-sm font-bold border ${
+              isPositive 
+                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
+                : 'bg-red-500/10 text-red-500 border-red-500/20'
+            }`}>
+              {isPositive ? '+' : ''}{stats.perc.toFixed(1)}% rispetto a ieri
             </div>
           </div>
 
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl lg:col-span-2 shadow-xl h-72">
-            <h2 className="text-slate-400 font-bold mb-4 uppercase tracking-widest text-sm">Andamento 30 Giorni</h2>
+            <h2 className="text-slate-400 font-bold mb-4 uppercase tracking-widest text-sm">Andamento Storico</h2>
             <ResponsiveContainer width="100%" height="85%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="date" stroke="#64748b" tick={{fontSize: 12}} />
-                <YAxis stroke="#64748b" tick={{fontSize: 12}} tickFormatter={(value) => `$${value}`} width={60} />
+                <YAxis 
+                  stroke="#64748b" 
+                  tick={{fontSize: 12}} 
+                  tickFormatter={(value) => `$${value}`} 
+                  width={60} 
+                  domain={['auto', 'auto']} 
+                />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
-                  itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
+                  itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }}
                 />
-                <Line type="monotone" dataKey="valore" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
+                <Line 
+                  type="monotone" 
+                  dataKey="valore" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3} 
+                  dot={{ r: 4, fill: '#3b82f6' }} 
+                  activeDot={{ r: 6 }} 
+                  animationDuration={500}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -111,7 +196,10 @@ export default function Profile() {
         <div>
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">🎯 Progresso Masterset</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {portfolioData.mastersets.map((set: any) => (
+            {portfolioData?.mastersets.length === 0 && (
+              <p className="text-slate-500 italic col-span-full">Nessun Masterset iniziato. Aggiungi carte normali o reverse alla collezione!</p>
+            )}
+            {portfolioData?.mastersets.map((set: any) => (
               <Link href={`/profile/set/${set.setId}`} key={set.setId} className="group">
                 <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg hover:border-blue-500 transition-all cursor-pointer h-full">
                   <div className="flex justify-between items-center mb-4">
@@ -139,20 +227,24 @@ export default function Profile() {
         </div>
 
         <div>
-          <h2 className="text-2xl font-bold mb-6 mt-4">🗂️ Carte Collezionate ({portfolioData.cards.reduce((acc: number, curr: any) => acc + curr.quantity, 0)})</h2>
+          <h2 className="text-2xl font-bold mb-6 mt-4">🗂️ Carte Collezionate ({portfolioData?.cards.reduce((acc: number, curr: any) => acc + curr.quantity, 0)})</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {portfolioData.cards.map((uc: any) => {
+            {portfolioData?.cards.map((uc: any) => {
               const isGraded = uc.variant?.includes('PSA') || uc.variant?.includes('BGS') || uc.variant?.includes('CGC');
               
               return (
-                <div key={uc.id} className="relative group">
+                <div key={uc.id} className="relative group bg-slate-900 rounded-xl border border-slate-800 hover:border-blue-500 transition-all flex flex-col h-full">
                   
-                  {/* Badge della quantità */}
-                  <div className="absolute -top-2 -right-2 z-10 bg-slate-900 text-white text-xs font-black w-8 h-8 rounded-full flex items-center justify-center border-2 border-slate-700 shadow-xl">
-                    x{uc.quantity}
-                  </div>
+                  {/* --- BOTTONE DI ELIMINAZIONE RAPIDA (X) --- */}
+                  <button
+                    onClick={(e) => handleQuickRemove(e, uc.card.id, uc.variant)}
+                    className="absolute -top-3 -right-3 z-30 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:scale-110"
+                    title="Rimuovi 1 copia"
+                  >
+                    ✕
+                  </button>
                   
-                  {/* NUOVO: Badge della Variante/Gradazione */}
+                  {/* Badge della Variante/Gradazione */}
                   {uc.variant && uc.variant !== 'Normal' && (
                     <div className={`absolute -top-2 -left-2 z-10 text-[10px] font-black px-2 py-1 rounded-md shadow-xl border uppercase tracking-wider ${
                       isGraded 
@@ -163,14 +255,18 @@ export default function Profile() {
                     </div>
                   )}
 
-                  <Link href={`/cards/${uc.card.id}`}>
-                    <div className={`bg-slate-900 p-2 rounded-xl border transition-all cursor-pointer h-full flex flex-col ${
-                      isGraded ? 'border-amber-500/50 hover:border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]' : 'border-slate-800 hover:border-blue-500'
-                    }`}>
-                      <img src={uc.card.imageUrl} alt={uc.card.name} className="w-full h-auto rounded-lg mb-2" />
-                      <h3 className="font-bold text-sm truncate">{uc.card.name}</h3>
-                      <p className="text-emerald-400 font-bold text-sm mt-auto">${getCardDisplayPrice(uc)}</p>
+                  <Link href={`/cards/${uc.card.id}`} className="p-2 flex flex-col flex-grow">
+                    <div className="relative mb-2">
+                      <img src={uc.card.imageUrl} alt={uc.card.name} className={`w-full h-auto rounded-lg ${isGraded ? 'shadow-[0_0_15px_rgba(245,158,11,0.2)]' : ''}`} />
+                      
+                      {/* Badge della quantità spostato in basso a destra sopra l'immagine */}
+                      <div className="absolute bottom-1 right-1 bg-slate-900/90 text-white text-xs font-black px-2 py-1 rounded-md border border-slate-700 shadow-md">
+                        x{uc.quantity}
+                      </div>
                     </div>
+
+                    <h3 className="font-bold text-sm truncate">{uc.card.name}</h3>
+                    <p className="text-emerald-400 font-bold text-sm mt-auto pt-1">${getCardDisplayPrice(uc)}</p>
                   </Link>
                 </div>
               );
