@@ -14,8 +14,10 @@ export default function CardDetails() {
   const [user, setUser] = useState<any>(null);
   const [isAdding, setIsAdding] = useState(false);
 
+  // LA PORTA DEL BACK-END NESTJS
+  const BACKEND_URL = 'http://localhost:3001';
+
   useEffect(() => {
-    // Recupera l'utente dal localStorage
     const storedUser = localStorage.getItem('pokedex_user');
     if (storedUser) setUser(JSON.parse(storedUser));
 
@@ -40,7 +42,6 @@ export default function CardDetails() {
     }
   }, [params.id]);
 
-  // ECCO IL CODICE JAVASCRIPT INTEGRATO NEL POSTO GIUSTO
   const handleAddToPortfolio = async () => {
     if (!user) {
       alert("⚠️ Devi prima accedere o registrarti per aggiungere carte al Masterset!");
@@ -48,26 +49,27 @@ export default function CardDetails() {
       return;
     }
 
-    // Prende il token salvato durante il login
     const token = localStorage.getItem('access_token');
     if (!token) {
       alert("⚠️ Sessione non valida. Effettua di nuovo il login.");
+      // Pulisco i dati corrotti/vecchi per forzare un login pulito
+      localStorage.removeItem('pokedex_user');
       router.push('/login');
       return;
     }
 
     setIsAdding(true);
     try {
-      // Chiama il backend NestJS che abbiamo creato in precedenza
-      const res = await fetch('http://localhost:3000/collection/add', {
+      // Usiamo la porta del BACKEND (3001) per salvare i dati
+      const res = await fetch(`${BACKEND_URL}/collection/add`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // Il token per la sicurezza!
+          'Authorization': `Bearer ${token}` 
         },
         body: JSON.stringify({ 
           cardId: card.id,
-          variant: "Normal", // Specifica la variante come da database
+          variant: "Normal", 
           condition: "NM"
         })
       });
@@ -75,13 +77,12 @@ export default function CardDetails() {
       if (res.ok) {
         alert("✅ Carta aggiunta al tuo Masterset con successo!");
       } else {
-        // Se c'è un errore (es. carta già presente)
         const errData = await res.json().catch(() => ({}));
         alert(`❌ Errore: ${errData.message || "Impossibile aggiungere la carta."}`);
       }
     } catch (error) {
       console.error(error);
-      alert("❌ Errore di connessione al server.");
+      alert("❌ Errore di connessione al server back-end.");
     } finally {
       setIsAdding(false);
     }
@@ -105,8 +106,6 @@ export default function CardDetails() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      
-      {/* Freccia Indietro */}
       <div className="max-w-6xl mx-auto px-4 py-6">
         <Link href="/" className="text-slate-400 hover:text-white flex items-center gap-2 w-fit transition-colors text-lg font-medium">
           <span>&larr;</span> Indietro
@@ -114,21 +113,16 @@ export default function CardDetails() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pb-16 flex flex-col md:flex-row gap-8 lg:gap-16">
-        
-        {/* Immagine */}
         <div className="w-full md:w-2/5 flex justify-center items-start">
           <img src={card.imageUrl} alt={card.name} className="w-full max-w-md h-auto rounded-2xl shadow-2xl shadow-black/50" />
         </div>
 
-        {/* Info e Dettagli */}
         <div className="w-full md:w-3/5 flex flex-col">
-          
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-2">{card.name}</h1>
           <p className="text-slate-400 text-sm font-medium mb-6">
             {card.set?.name || 'Set Sconosciuto'} • {card.id.split('-').pop()} / {card.set?.totalCards || '???'}
           </p>
 
-          {/* BOX PREZZI */}
           <div className="bg-slate-900 rounded-2xl p-6 mb-6 border border-slate-800 shadow-xl">
             <div className="flex justify-between items-end pb-5 border-b border-slate-700/50">
               <div className="flex flex-col">
@@ -155,7 +149,6 @@ export default function CardDetails() {
             </div>
           </div>
 
-          {/* BOTTONE AGGIUNGI */}
           <button 
             onClick={handleAddToPortfolio}
             disabled={isAdding}
@@ -167,7 +160,6 @@ export default function CardDetails() {
             {isAdding ? 'Aggiunta in corso...' : 'AGGIUNGI AL MASTERSET'}
           </button>
 
-          {/* Dettagli tecnici della carta */}
           <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
             <h3 className="text-white text-lg font-bold mb-5">Card Details</h3>
             <div className="flex flex-col gap-4">
@@ -189,7 +181,6 @@ export default function CardDetails() {
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
