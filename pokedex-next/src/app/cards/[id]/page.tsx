@@ -13,9 +13,9 @@ export default function CardDetails() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [selectedLang, setSelectedLang] = useState('EN'); // Nuovo: Selettore lingua
 
   useEffect(() => {
+    // Recupera l'utente dal localStorage
     const storedUser = localStorage.getItem('pokedex_user');
     if (storedUser) setUser(JSON.parse(storedUser));
 
@@ -31,8 +31,6 @@ export default function CardDetails() {
         })
         .then((data) => {
           setCard(data);
-          // Imposta la lingua predefinita se presente nel DB
-          if (data.language) setSelectedLang(data.language);
           setLoading(false);
         })
         .catch((err) => {
@@ -42,24 +40,48 @@ export default function CardDetails() {
     }
   }, [params.id]);
 
+  // ECCO IL CODICE JAVASCRIPT INTEGRATO NEL POSTO GIUSTO
   const handleAddToPortfolio = async () => {
     if (!user) {
-      alert("⚠️ Devi prima accedere o registrarti per avere un Portfolio!");
+      alert("⚠️ Devi prima accedere o registrarti per aggiungere carte al Masterset!");
       router.push('/login');
       return;
     }
+
+    // Prende il token salvato durante il login
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert("⚠️ Sessione non valida. Effettua di nuovo il login.");
+      router.push('/login');
+      return;
+    }
+
     setIsAdding(true);
     try {
-      const res = await fetch('/api/portfolio', {
+      // Chiama il backend NestJS che abbiamo creato in precedenza
+      const res = await fetch('http://localhost:3000/collection/add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, cardId: card.id })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // Il token per la sicurezza!
+        },
+        body: JSON.stringify({ 
+          cardId: card.id,
+          variant: "Normal", // Specifica la variante come da database
+          condition: "NM"
+        })
       });
-      const result = await res.json();
-      if (res.ok) alert("✅ " + result.message);
-      else alert("❌ Errore durante l'aggiunta.");
+
+      if (res.ok) {
+        alert("✅ Carta aggiunta al tuo Masterset con successo!");
+      } else {
+        // Se c'è un errore (es. carta già presente)
+        const errData = await res.json().catch(() => ({}));
+        alert(`❌ Errore: ${errData.message || "Impossibile aggiungere la carta."}`);
+      }
     } catch (error) {
       console.error(error);
+      alert("❌ Errore di connessione al server.");
     } finally {
       setIsAdding(false);
     }
@@ -84,7 +106,7 @@ export default function CardDetails() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       
-      {/* Freccia Indietro Sicura */}
+      {/* Freccia Indietro */}
       <div className="max-w-6xl mx-auto px-4 py-6">
         <Link href="/" className="text-slate-400 hover:text-white flex items-center gap-2 w-fit transition-colors text-lg font-medium">
           <span>&larr;</span> Indietro
@@ -106,20 +128,7 @@ export default function CardDetails() {
             {card.set?.name || 'Set Sconosciuto'} • {card.id.split('-').pop()} / {card.set?.totalCards || '???'}
           </p>
 
-          {/* TABS DELLE LINGUE (Interfaccia) */}
-          <div className="flex gap-2 mb-6 bg-slate-900 p-1 rounded-xl w-fit border border-slate-800">
-            {['EN', 'IT', 'JP'].map((lang) => (
-              <button 
-                key={lang}
-                onClick={() => setSelectedLang(lang)}
-                className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${selectedLang === lang ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
-              >
-                {lang === 'EN' ? '🇬🇧 English' : lang === 'IT' ? '🇮🇹 Italiano' : '🇯🇵 日本語'}
-              </button>
-            ))}
-          </div>
-
-          {/* BOX PREZZI (Colori fissati) */}
+          {/* BOX PREZZI */}
           <div className="bg-slate-900 rounded-2xl p-6 mb-6 border border-slate-800 shadow-xl">
             <div className="flex justify-between items-end pb-5 border-b border-slate-700/50">
               <div className="flex flex-col">
@@ -146,6 +155,7 @@ export default function CardDetails() {
             </div>
           </div>
 
+          {/* BOTTONE AGGIUNGI */}
           <button 
             onClick={handleAddToPortfolio}
             disabled={isAdding}
@@ -154,7 +164,7 @@ export default function CardDetails() {
             }`}
           >
             <span className="text-2xl font-normal leading-none">+</span>
-            {isAdding ? 'Aggiunta in corso...' : 'AGGIUNGI AL PORTFOLIO'}
+            {isAdding ? 'Aggiunta in corso...' : 'AGGIUNGI AL MASTERSET'}
           </button>
 
           {/* Dettagli tecnici della carta */}
