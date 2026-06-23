@@ -13,9 +13,9 @@ import { CollectionModule } from './collection/collection.module';
     PrismaModule,
     CardsModule,
     SetsModule,
-    ScheduleModule.forRoot(),
+    ScheduleModule.forRoot(), // Inizializza il Cron Job
     AuthModule,
-    CollectionModule, // Inizializza il Cron Job
+    CollectionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
