@@ -97,11 +97,23 @@ export default function Home() {
   
   const [currentPage, setCurrentPage] = useState(1);
 
+  // GESTIONE SICURA DEL RECUPERO SET
   useEffect(() => {
     fetch('/api/sets')
       .then(res => res.json())
-      .then(data => setAvailableSets(data || []))
-      .catch(err => console.error("Errore recupero sets", err));
+      .then(data => {
+        // Controllo se i dati ricevuti sono effettivamente un array per prevenire il crash
+        if (Array.isArray(data)) {
+          setAvailableSets(data);
+        } else {
+          console.error("L'API non ha restituito un array di Set:", data);
+          setAvailableSets([]);
+        }
+      })
+      .catch(err => {
+        console.error("Errore di rete durante il recupero dei sets", err);
+        setAvailableSets([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -131,12 +143,14 @@ export default function Home() {
     fetch(`/api/cards?${queryParams.toString()}`)
       .then((response) => response.json())
       .then((json) => {
-        setCards(json.data || []);
+        // Assicuriamoci che anche qui i dati siano un array
+        setCards(Array.isArray(json.data) ? json.data : []);
         setMeta(json.meta || null);
         setLoading(false);
       })
       .catch((error) => {
         console.error("Errore API:", error);
+        setCards([]);
         setLoading(false);
       });
   }, [currentPage, searchTerm, selectedType, selectedRarity, selectedSet, sortOrder]);
