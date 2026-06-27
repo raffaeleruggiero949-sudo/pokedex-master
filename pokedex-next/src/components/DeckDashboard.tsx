@@ -51,7 +51,18 @@ export default function DeckDashboard() {
 
   const handleCreateDeck = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDeckName.trim() || !userId) return;
+    
+    // 1. Controllo ID Utente
+    if (!userId) {
+      alert("⚠️ Errore: Utente non trovato. Prova a fare il logout e poi di nuovo il login.");
+      return;
+    }
+
+    // 2. Controllo Nome Vuoto
+    if (!newDeckName.trim()) {
+      alert("⚠️ Devi inserire un nome per il mazzo.");
+      return;
+    }
 
     setIsCreating(true);
     try {
@@ -66,9 +77,15 @@ export default function DeckDashboard() {
         setDecks([newDeck, ...decks]); // Aggiunge il nuovo mazzo in cima alla lista
         setNewDeckName('');
         setNewDeckDesc('');
+        alert("✅ Mazzo creato con successo!");
+      } else {
+        // Se il server risponde con errore (es. tabella non trovata)
+        const errData = await res.json().catch(() => ({}));
+        alert(`❌ Errore dal server: ${errData.error || 'Impossibile creare il mazzo'}`);
       }
     } catch (error) {
       console.error('Errore creazione mazzo', error);
+      alert("❌ Errore di connessione al server.");
     } finally {
       setIsCreating(false);
     }
@@ -81,9 +98,12 @@ export default function DeckDashboard() {
       const res = await fetch(`/api/decks/${deckId}`, { method: 'DELETE' });
       if (res.ok) {
         setDecks(decks.filter(d => d.id !== deckId));
+      } else {
+        alert("❌ Errore durante l'eliminazione.");
       }
     } catch (error) {
       console.error('Errore eliminazione', error);
+      alert("❌ Errore di connessione al server.");
     }
   };
 
