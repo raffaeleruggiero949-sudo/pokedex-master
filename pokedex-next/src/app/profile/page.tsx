@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import PriceAlertDashboard from '@/components/PriceAlertDashboard';
+import DeckDashboard from '@/components/DeckDashboard'; // <-- NUOVO IMPORT
 
 export default function Profile() {
   const router = useRouter();
@@ -14,7 +15,6 @@ export default function Profile() {
   const [stats, setStats] = useState({ diff: 0, perc: 0 });
   const [loading, setLoading] = useState(true);
 
-  // LA PORTA DEL BACK-END NESTJS
   const BACKEND_URL = 'http://localhost:3001';
 
   const generateOrLoadChartData = (userId: string, currentTotal: number) => {
@@ -192,7 +192,13 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* NUOVA SEZIONE: PRICE ALERTS */}
+        {/* NUOVA SEZIONE: MAZZI (DECKS) */}
+        <div className="mt-4">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">🎴 I Miei Mazzi</h2>
+          <DeckDashboard />
+        </div>
+
+        {/* SEZIONE: PRICE ALERTS */}
         <div className="mt-4">
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">🔔 I Miei Price Alert</h2>
           <PriceAlertDashboard />

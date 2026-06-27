@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AddPriceAlert from '@/components/AddPriceAlert';
+import AddToDeck from '@/components/AddToDeck'; // <-- NUOVO IMPORT
 
 export default function CardDetails() {
   const params = useParams();
@@ -18,7 +19,6 @@ export default function CardDetails() {
   const [isRemoving, setIsRemoving] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState('Normal');
 
-  // LA PORTA DEL BACK-END NESTJS
   const BACKEND_URL = 'http://localhost:3001';
 
   useEffect(() => {
@@ -260,12 +260,15 @@ export default function CardDetails() {
             </div>
           </div>
 
-          {/* NUOVO COMPONENTE: Aggiungi Price Alert */}
           {user && (
             <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
-              <h3 className="text-white text-lg font-bold mb-2">Monitora questa Carta</h3>
-              <p className="text-slate-400 text-sm mb-4">Ricevi un avviso (o controlla dal tuo profilo) quando il prezzo di mercato scende sotto la soglia che desideri.</p>
-              <AddPriceAlert cardId={card.id} />
+              <h3 className="text-white text-lg font-bold mb-2">Opzioni Avanzate Giocatore</h3>
+              <p className="text-slate-400 text-sm mb-4">Monitora il prezzo di questa carta sul mercato o aggiungila direttamente a uno dei tuoi mazzi da competizione.</p>
+              
+              <div className="flex flex-wrap gap-4">
+                <AddPriceAlert cardId={card.id} />
+                <AddToDeck cardId={card.id} />
+              </div>
             </div>
           )}
 
