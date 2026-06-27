@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import PriceAlertDashboard from '@/components/PriceAlertDashboard';
 
 export default function Profile() {
   const router = useRouter();
@@ -48,7 +49,6 @@ export default function Profile() {
     return data;
   };
 
-  // Funzione isolata per caricare o ricaricare i dati (utile dopo aver eliminato una carta)
   const fetchPortfolioData = async (userData: any) => {
     try {
       const res = await fetch(`/api/portfolio?userId=${userData.id}`);
@@ -85,7 +85,6 @@ export default function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  // --- NUOVA FUNZIONE: Rimozione Rapida ---
   const handleQuickRemove = async (e: React.MouseEvent, cardId: string, variant: string) => {
     e.preventDefault(); 
     e.stopPropagation();
@@ -100,7 +99,6 @@ export default function Profile() {
       });
 
       if (res.ok) {
-        // Ricarica i dati per aggiornare UI e Grafico istantaneamente
         fetchPortfolioData(user);
       } else {
         alert("Errore durante la rimozione della carta.");
@@ -148,6 +146,7 @@ export default function Profile() {
 
       <div className="max-w-7xl mx-auto px-4 gap-8 flex flex-col">
         
+        {/* GRAFICI PORTFOLIO */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col justify-center shadow-xl">
             <h2 className="text-slate-400 font-bold mb-2 uppercase tracking-widest text-sm">Portfolio Value</h2>
@@ -193,6 +192,13 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* NUOVA SEZIONE: PRICE ALERTS */}
+        <div className="mt-4">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">🔔 I Miei Price Alert</h2>
+          <PriceAlertDashboard />
+        </div>
+
+        {/* PROGRESSO MASTERSET */}
         <div>
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">🎯 Progresso Masterset</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -226,6 +232,7 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* CARTE COLLEZIONATE */}
         <div>
           <h2 className="text-2xl font-bold mb-6 mt-4">🗂️ Carte Collezionate ({portfolioData?.cards.reduce((acc: number, curr: any) => acc + curr.quantity, 0)})</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -235,7 +242,7 @@ export default function Profile() {
               return (
                 <div key={uc.id} className="relative group bg-slate-900 rounded-xl border border-slate-800 hover:border-blue-500 transition-all flex flex-col h-full">
                   
-                  {/* --- BOTTONE DI ELIMINAZIONE RAPIDA (X) --- */}
+                  {/* BOTTONE ELIMINA RAPIDA */}
                   <button
                     onClick={(e) => handleQuickRemove(e, uc.card.id, uc.variant)}
                     className="absolute -top-3 -right-3 z-30 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:scale-110"
@@ -244,7 +251,7 @@ export default function Profile() {
                     ✕
                   </button>
                   
-                  {/* Badge della Variante/Gradazione */}
+                  {/* Badge Variante */}
                   {uc.variant && uc.variant !== 'Normal' && (
                     <div className={`absolute -top-2 -left-2 z-10 text-[10px] font-black px-2 py-1 rounded-md shadow-xl border uppercase tracking-wider ${
                       isGraded 
@@ -259,7 +266,6 @@ export default function Profile() {
                     <div className="relative mb-2">
                       <img src={uc.card.imageUrl} alt={uc.card.name} className={`w-full h-auto rounded-lg ${isGraded ? 'shadow-[0_0_15px_rgba(245,158,11,0.2)]' : ''}`} />
                       
-                      {/* Badge della quantità spostato in basso a destra sopra l'immagine */}
                       <div className="absolute bottom-1 right-1 bg-slate-900/90 text-white text-xs font-black px-2 py-1 rounded-md border border-slate-700 shadow-md">
                         x{uc.quantity}
                       </div>

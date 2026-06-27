@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AddPriceAlert from '@/components/AddPriceAlert';
 
 export default function CardDetails() {
   const params = useParams();
@@ -146,15 +147,12 @@ export default function CardDetails() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       <div className="max-w-6xl mx-auto px-4 py-6">
-        
-        {/* MODIFICA: Ora usa router.back() invece di un Link che ti riportava alla Home */}
         <button 
           onClick={() => router.back()} 
           className="text-slate-400 hover:text-white flex items-center gap-2 w-fit transition-colors text-lg font-medium outline-none"
         >
           <span>&larr;</span> Indietro
         </button>
-
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pb-16 flex flex-col md:flex-row gap-8 lg:gap-16">
@@ -240,7 +238,7 @@ export default function CardDetails() {
             </div>
           </div>
 
-          <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
+          <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl mb-6">
             <h3 className="text-white text-lg font-bold mb-5">Dettagli Tecnici</h3>
             <div className="flex flex-col gap-4">
               <div className="flex justify-between items-center pb-3 border-b border-slate-800/80">
@@ -261,6 +259,16 @@ export default function CardDetails() {
               </div>
             </div>
           </div>
+
+          {/* NUOVO COMPONENTE: Aggiungi Price Alert */}
+          {user && (
+            <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
+              <h3 className="text-white text-lg font-bold mb-2">Monitora questa Carta</h3>
+              <p className="text-slate-400 text-sm mb-4">Ricevi un avviso (o controlla dal tuo profilo) quando il prezzo di mercato scende sotto la soglia che desideri.</p>
+              <AddPriceAlert cardId={card.id} />
+            </div>
+          )}
+
         </div>
       </div>
     </div>
