@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule'; // Importato per i prezzi automatici
 import { AuthModule } from './auth/auth.module';
 import { CollectionModule } from './collection/collection.module';
+import { TasksService } from './tasks.service';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CollectionModule } from './collection/collection.module';
     CollectionModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  // 👇 Inserisci tutti i service dentro questa singola riga separati da virgola
+  providers: [AppService, TasksService], 
 })
 export class AppModule {}
