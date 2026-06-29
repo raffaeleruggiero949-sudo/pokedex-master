@@ -18,6 +18,7 @@ model User {
   userCards   UserCard[]
   decks       Deck[]
   priceAlerts PriceAlert[]
+  notifications Notification[]
 }
 
 model Set {
