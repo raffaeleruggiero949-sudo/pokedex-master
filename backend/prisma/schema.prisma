@@ -23,6 +23,7 @@ model User {
   userCards   UserCard[]
   priceAlerts PriceAlert[]
   decks       Deck[]
+  notifications Notification[]
 }
 
 model Set {
@@ -115,4 +116,13 @@ model DeckCard {
   
   cardId    String
   card      Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
