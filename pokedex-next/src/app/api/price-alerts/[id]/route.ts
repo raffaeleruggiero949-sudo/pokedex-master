@@ -1,40 +1,21 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// UPDATE: Modifica il prezzo o lo stato (Attivo/Inattivo) di un alert
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+// Nota come abbiamo cambiato { params } per indicare che è una Promise
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const alertId = params.id;
-    const body = await req.json();
-    const { targetPrice, isActive } = body;
+    // 1. Aspettiamo che Next.js ci consegni i parametri
+    const resolvedParams = await params;
+    const alertId = resolvedParams.id;
 
-    const updatedAlert = await prisma.priceAlert.update({
-      where: { id: alertId },
-      data: {
-        ...(targetPrice !== undefined && { targetPrice: parseFloat(targetPrice) }),
-        ...(isActive !== undefined && { isActive: Boolean(isActive) })
-      }
-    });
-
-    return NextResponse.json(updatedAlert, { status: 200 });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Errore nell'aggiornamento dell'alert" }, { status: 500 });
-  }
-}
-
-// DELETE: Elimina definitivamente un alert
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  try {
-    const alertId = params.id;
-
+    // 2. Ora possiamo eliminare l'alert con l'ID corretto
     await prisma.priceAlert.delete({
       where: { id: alertId }
     });
 
-    return NextResponse.json({ message: "Alert eliminato con successo" }, { status: 200 });
+    return NextResponse.json({ message: "Alert eliminato con successo" });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Errore durante l'eliminazione dell'alert" }, { status: 500 });
+    console.error("Errore eliminazione alert:", error);
+    return NextResponse.json({ error: "Errore durante l'eliminazione" }, { status: 500 });
   }
 }
