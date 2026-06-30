@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { PrismaService } from './prisma/prisma.service'; // Controlla che il percorso sia corretto
+import { PrismaService } from './prisma/prisma.service';
 
 @Injectable()
 export class TasksService {
@@ -8,29 +8,25 @@ export class TasksService {
 
   constructor(private prisma: PrismaService) {}
 
-  // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT) <-- Usa questo in produzione
-  @Cron(CronExpression.EVERY_MINUTE) // <-- Usiamo EVERY_MINUTE per testarlo subito!
+  @Cron(CronExpression.EVERY_MINUTE) // Mantiene il controllo ogni minuto per testarlo
   async checkPriceAlerts() {
     this.logger.log('Avvio controllo automatico dei Price Alerts...');
 
     try {
-      // 1. Recupera tutti gli alert dal database
+      // 1. Recupera SOLO gli alert ATTIVI (isActive: true)
       const alerts = await this.prisma.priceAlert.findMany({
-        include: { card: true }, // Includiamo i dati della carta per avere il nome
+        where: { isActive: true },
+        include: { card: true },
       });
 
       if (alerts.length === 0) {
-        this.logger.log('Nessun Price Alert da controllare.');
+        this.logger.log('Nessun Price Alert attivo da controllare.');
         return;
       }
 
       for (const alert of alerts) {
-        // 2. SIMULAZIONE: Qui andrà la chiamata vera alle API di TCGDex per la carta specifica.
-        // const tcgDexData = await fetch(`https://api.tcgdex.net/v2/en/cards/${alert.card.id}`);
-        // const realPrice = ...
-        
-        // Per ora simuliamo un calo di prezzo:
-        const currentMarketPrice = alert.targetPrice - 2.0; // Simuliamo che costi 2€ in meno del target
+        // Simuliamo un calo di prezzo (2€ in meno del target)
+        const currentMarketPrice = alert.targetPrice - 2.0; 
 
         // 3. Controlla la condizione
         if (currentMarketPrice <= alert.targetPrice) {
@@ -44,9 +40,10 @@ export class TasksService {
             },
           });
 
-          // 5. Elimina l'alert per non inviare la notifica all'infinito ogni minuto
-          await this.prisma.priceAlert.delete({
+          // 5. DISATTIVA l'alert invece di eliminarlo
+          await this.prisma.priceAlert.update({
             where: { id: alert.id },
+            data: { isActive: false },
           });
         }
       }

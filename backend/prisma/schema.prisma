@@ -4,13 +4,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-    url      = env("DATABASE_URL") // <-- QUESTA RIGA E' FONDAMENTALE!
-
+  url      = env("DATABASE_URL")
 }
-
-// -------------------------------------------------
-// MODELLI ESISTENTI (Utenti e Carte)
-// -------------------------------------------------
 
 model User {
   id        String   @id @default(uuid())
@@ -21,41 +16,39 @@ model User {
   updatedAt DateTime @updatedAt
 
   userCards   UserCard[]
-  priceAlerts PriceAlert[]
   decks       Deck[]
+  priceAlerts PriceAlert[]
   notifications Notification[]
 }
 
 model Set {
-  id          String  @id
+  id          String   @id 
   name        String
-  series      String
-  totalCards  Int
-  releaseDate String
-  logoUrl     String?
-  symbolUrl   String? 
-  language    String  @default("EN") 
-  
-  cards       Card[]
+  series      String   
+  totalCards  Int      
+  releaseDate String   
+  logoUrl     String?  
+  symbolUrl   String?  
+  language    String   @default("EN") 
+  cards       Card[]   
 }
 
 model Card {
-  id         String     @id
-  name       String
-  supertype  String?
-  subtypes   String[] 
-  rarity     String?
-  priceUsd   Float?
-  imageUrl   String?
-  language   String     @default("EN")
-  hasReverse Boolean    @default(false)
+  id          String     @id 
+  name        String     
+  supertype   String?  
+  subtypes    String[]   
+  rarity      String?
+  priceUsd    Float?     
+  imageUrl    String?     
+  language    String     @default("EN") 
+  hasReverse  Boolean    @default(false) 
+  setId       String     
+  set         Set        @relation(fields: [setId], references: [id])
   
-  setId      String
-  set        Set        @relation(fields: [setId], references: [id])
-  
-  userCards  UserCard[]
-  priceAlerts PriceAlert[] 
-  deckCards  DeckCard[]
+  userCards   UserCard[] 
+  deckCards   DeckCard[]
+  priceAlerts PriceAlert[]
 }
 
 model UserCard {
@@ -64,65 +57,55 @@ model UserCard {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   cardId    String
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  quantity  Int      @default(1)
-  variant   String   @default("Normal")
-  condition String   @default("NM")
+  quantity  Int      @default(1) 
+  variant   String   @default("Normal") 
+  condition String   @default("NM")     
   createdAt DateTime @default(now())
 
-  @@unique([userId, cardId, variant])
-}
-
-// -------------------------------------------------
-// NUOVI MODELLI (Price Alerts e Decks)
-// -------------------------------------------------
-
-model PriceAlert {
-  id          String   @id @default(uuid())
-  targetPrice Float
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  cardId      String   
-  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
+  @@unique([userId, cardId, variant]) 
 }
 
 model Deck {
   id          String     @id @default(uuid())
   name        String
   description String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
   cards       DeckCard[]
-
-  @@index([userId])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model DeckCard {
-  id        String @id @default(uuid())
-  quantity  Int    @default(1)
-  
+  id        String   @id @default(uuid())
   deckId    String
-  deck      Deck   @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  
+  deck      Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
   cardId    String
-  card      Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+
+  @@unique([deckId, cardId])
+}
+
+model PriceAlert {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId      String
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  targetPrice Float
+  isCondition String   @default("Normal")
+  isActive    Boolean  @default(true)      // <-- IL NUOVO CAMPO AGGIUNTO
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, cardId, isCondition])
 }
 
 model Notification {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  message   String
+  message   String   
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }

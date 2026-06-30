@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 export async function GET(request: Request) {
   try {
     // TODO: Sostituisci questo con l'ID dell'utente attualmente loggato
-    const userId = "ID_UTENTE_ATTUALE"; 
+    const userId = "0fb288b4-9fdd-469e-8cb0-f2accca2bf69"; 
 
     const notifications = await prisma.notification.findMany({
       where: { 

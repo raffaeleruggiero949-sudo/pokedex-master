@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import PriceAlertDashboard from '@/components/PriceAlertDashboard';
-import DeckDashboard from '@/components/DeckDashboard'; // <-- NUOVO IMPORT
+import DeckDashboard from '@/components/DeckDashboard';
+import NotificationBell from '@/components/NotificationBell'; // <-- IMPORT CAMPANELLA AGGIUNTO
 
 export default function Profile() {
   const router = useRouter();
@@ -134,13 +135,19 @@ export default function Profile() {
           <h1 className="text-3xl font-black">Profilo di <span className="text-blue-500">{user?.name}</span></h1>
           <p className="text-slate-400 mt-1">Gestisci la tua collezione e analizza il mercato.</p>
         </div>
-        <div className="flex gap-4">
-          <Link href="/" className="px-6 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg font-bold transition-all text-sm border border-slate-700">
-            Torna al Pokédex
-          </Link>
-          <button onClick={handleLogout} className="px-6 py-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white border border-red-600/50 rounded-lg font-bold transition-all text-sm">
-            Esci
-          </button>
+        
+        {/* MODIFICATO: Aggiunta la campanella e allineamento */}
+        <div className="flex items-center gap-6">
+          <NotificationBell />
+          
+          <div className="flex gap-4">
+            <Link href="/" className="px-6 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg font-bold transition-all text-sm border border-slate-700">
+              Torna al Pokédex
+            </Link>
+            <button onClick={handleLogout} className="px-6 py-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white border border-red-600/50 rounded-lg font-bold transition-all text-sm">
+              Esci
+            </button>
+          </div>
         </div>
       </header>
 

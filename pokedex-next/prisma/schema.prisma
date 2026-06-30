@@ -4,16 +4,16 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL") // <-- QUESTA RIGA E' FONDAMENTALE!
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String     @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String?
-  email     String     @unique
+  email     String   @unique
   password  String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   userCards   UserCard[]
   decks       Deck[]
@@ -65,8 +65,6 @@ model UserCard {
   @@unique([userId, cardId, variant]) 
 }
 
-// --- NUOVI MODELLI PER I MAZZI E PRICE ALERTS ---
-
 model Deck {
   id          String     @id @default(uuid())
   name        String
@@ -97,6 +95,7 @@ model PriceAlert {
   card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
   targetPrice Float
   isCondition String   @default("Normal")
+  isActive    Boolean  @default(true)      // <-- IL NUOVO CAMPO AGGIUNTO
   createdAt   DateTime @default(now())
 
   @@unique([userId, cardId, isCondition])
@@ -106,7 +105,7 @@ model Notification {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  message   String   // Es: "Charizard ex è sceso sotto i 15€!"
+  message   String   
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }

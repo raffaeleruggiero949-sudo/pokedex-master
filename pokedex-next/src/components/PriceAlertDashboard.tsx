@@ -39,7 +39,7 @@ export default function PriceAlertDashboard() {
     fetchAlerts();
   }, []);
 
-  // UPDATE: Cambia lo stato Attivo/Inattivo
+  // UPDATE: Cambia lo stato Attivo/Inattivo (Modificato manualmente o dal Cron)
   const toggleAlertStatus = async (alertId: string, currentStatus: boolean) => {
     try {
       const res = await fetch(`/api/price-alerts/${alertId}`, {
@@ -50,13 +50,15 @@ export default function PriceAlertDashboard() {
 
       if (res.ok) {
         setAlerts(alerts.map(a => a.id === alertId ? { ...a, isActive: !currentStatus } : a));
+      } else {
+        alert("Errore nell'aggiornamento dello stato.");
       }
     } catch (error) {
       console.error('Errore aggiornamento', error);
     }
   };
 
-  // DELETE: Elimina l'alert
+  // DELETE: Elimina l'alert definitivamente
   const deleteAlert = async (alertId: string) => {
     if (!confirm('Sei sicuro di voler eliminare questo alert?')) return;
 
@@ -85,7 +87,7 @@ export default function PriceAlertDashboard() {
           <tr className="bg-slate-950 text-slate-400 text-sm border-b border-slate-800">
             <th className="p-4 font-medium">Carta</th>
             <th className="p-4 font-medium">Soglia Desiderata</th>
-            <th className="p-4 font-medium">Stato</th>
+            <th className="p-4 font-medium">Stato (Clicca per modificare)</th>
             <th className="p-4 font-medium text-right">Azioni</th>
           </tr>
         </thead>
@@ -103,19 +105,20 @@ export default function PriceAlertDashboard() {
               <td className="p-4">
                 <button
                   onClick={() => toggleAlertStatus(alert.id, alert.isActive)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  title={alert.isActive ? "Spegni Alert" : "Riaccendi Alert"}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-transform hover:scale-105 active:scale-95 ${
                     alert.isActive 
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                      : 'bg-slate-700 text-slate-400 border border-slate-600'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(52,211,153,0.1)]' 
+                      : 'bg-slate-800 text-slate-500 border border-slate-700'
                   }`}
                 >
-                  {alert.isActive ? 'ATTIVO' : 'INATTIVO'}
+                  {alert.isActive ? '🟢 IN RICERCA' : '⚪ INATTIVO'}
                 </button>
               </td>
               <td className="p-4 text-right">
                 <button
                   onClick={() => deleteAlert(alert.id)}
-                  className="text-red-400 hover:text-red-300 font-medium text-sm transition-colors"
+                  className="text-red-400 hover:text-red-300 font-medium text-sm transition-colors bg-red-400/10 hover:bg-red-400/20 px-3 py-1 rounded-lg border border-red-400/20"
                 >
                   Elimina
                 </button>
