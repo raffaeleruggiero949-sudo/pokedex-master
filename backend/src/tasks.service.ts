@@ -8,12 +8,13 @@ export class TasksService {
 
   constructor(private prisma: PrismaService) {}
 
-  @Cron(CronExpression.EVERY_MINUTE) // Mantiene il controllo ogni minuto per testarlo
+  // ATTENZIONE: Per la produzione vera e propria, usa EVERY_HOUR o EVERY_DAY_AT_MIDNIGHT.
+  // Lasciamo EVERY_MINUTE per i test, ma fai attenzione ai limiti dell'API!
+  @Cron(CronExpression.EVERY_HOUR)
   async checkPriceAlerts() {
-    this.logger.log('Avvio controllo automatico dei Price Alerts...');
+    this.logger.log('Avvio controllo REALE dei Price Alerts sul mercato...');
 
     try {
-      // 1. Recupera SOLO gli alert ATTIVI (isActive: true)
       const alerts = await this.prisma.priceAlert.findMany({
         where: { isActive: true },
         include: { card: true },
@@ -25,32 +26,69 @@ export class TasksService {
       }
 
       for (const alert of alerts) {
-        // Simuliamo un calo di prezzo (2€ in meno del target)
-        const currentMarketPrice = alert.targetPrice - 2.0; 
+        try {
+          // 1. CHIAMATA REALE ALL'API ESTERNA
+          // Sostituisci questo URL con quello esatto che usi per scaricare i dati della carta.
+          // (Esempio: API di Pokémon TCG o TCGDex)
+          const response = await fetch(`https://api.pokemontcg.io/v2/cards/${alert.cardId}`);
+          
+          if (!response.ok) {
+            this.logger.error(`Impossibile contattare l'API per la carta ${alert.cardId}`);
+            continue; // Salta questa carta e passa alla successiva
+          }
 
-        // 3. Controlla la condizione
-        if (currentMarketPrice <= alert.targetPrice) {
-          this.logger.log(`⚠️ TARGET RAGGIUNTO! ${alert.card.name} costa ${currentMarketPrice}€`);
+          const data = await response.json();
 
-          // 4. Crea la Notifica nel Database
-          await this.prisma.notification.create({
-            data: {
-              userId: alert.userId,
-              message: `Ottime notizie! Il prezzo di ${alert.card.name} è sceso a ${currentMarketPrice}€ (Il tuo target era ${alert.targetPrice}€).`,
-            },
+          // 2. ESTRAZIONE DEL PREZZO REALE
+          // Adatta questo percorso in base a come è fatto il JSON della tua API.
+          // Questo è l'esempio standard se usi api.pokemontcg.io (prezzi TCGPlayer)
+          let realMarketPrice = data.data?.tcgplayer?.prices?.normal?.market;
+
+          // Fallback di sicurezza: se la carta reale non ha un prezzo, la saltiamo
+          if (!realMarketPrice) {
+            this.logger.warn(`Prezzo di mercato non disponibile per la carta ${alert.cardId}`);
+            continue;
+          }
+
+          // Arrotondiamo a 2 decimali per pulizia
+          realMarketPrice = parseFloat(realMarketPrice.toFixed(2));
+          this.logger.log(`Prezzo attuale reale di ${alert.card.name}: $${realMarketPrice}`);
+
+          // 3. AGGIORNIAMO IL DATABASE CON IL PREZZO REALE (Così la dashboard è sempre aggiornata!)
+          await this.prisma.card.update({
+            where: { id: alert.cardId },
+            data: { priceUsd: realMarketPrice },
           });
 
-          // 5. DISATTIVA l'alert invece di eliminarlo
-          await this.prisma.priceAlert.update({
-            where: { id: alert.id },
-            data: { isActive: false },
-          });
+          // 4. CONTROLLO CONDIZIONE: Il prezzo reale è sceso sotto (o uguale) alla soglia?
+          if (realMarketPrice <= alert.targetPrice) {
+            this.logger.log(`⚠️ TARGET REALE RAGGIUNTO! ${alert.card.name} costa $${realMarketPrice}`);
+
+            await this.prisma.notification.create({
+              data: {
+                userId: alert.userId,
+                message: `Ottime notizie! Il prezzo di mercato di ${alert.card.name} è sceso a $${realMarketPrice} (Il tuo target era $${alert.targetPrice}).`,
+              },
+            });
+
+            await this.prisma.priceAlert.update({
+              where: { id: alert.id },
+              data: { isActive: false },
+            });
+          }
+
+        } catch (cardError) {
+          this.logger.error(`Errore nel controllo della carta ${alert.cardId}`, cardError);
         }
+
+        // 5. SISTEMA ANTI-BAN (Rate Limiting)
+        // Aspetta 1 secondo prima di controllare la prossima carta per non farsi bloccare dall'API
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       this.logger.log('Controllo Price Alerts completato con successo.');
     } catch (error) {
-      this.logger.error("Errore durante l'esecuzione del Cron Job", error);
+      this.logger.error("Errore generico durante l'esecuzione del Cron Job", error);
     }
   }
 }
