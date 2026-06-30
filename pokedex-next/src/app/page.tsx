@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { POKEMON_RARITIES, POKEMON_SUPERTYPES } from '@/lib/pokemon-constants';
 
 interface Card {
   id: string;
@@ -37,11 +38,7 @@ const translations = {
     profile: "Profilo di",
     search: "Cerca per nome (es. Charizard)...",
     allTypes: "Tutti i Tipi",
-    trainer: "Allenatore",
-    energy: "Energia",
     allRarities: "Tutte le Rarità",
-    common: "Comuni",
-    holo: "Holo / Reverse Holo",
     allSets: "Tutte le Espansioni",
     searchSet: "Scrivi per cercare un'espansione...",
     sortBy: "Ordina per...",
@@ -61,11 +58,7 @@ const translations = {
     profile: "Profile of",
     search: "Search by name (e.g. Charizard)...",
     allTypes: "All Types",
-    trainer: "Trainer",
-    energy: "Energy",
     allRarities: "All Rarities",
-    common: "Common",
-    holo: "Holo / Reverse Holo",
     allSets: "All Expansions",
     searchSet: "Type to search an expansion...",
     sortBy: "Sort by...",
@@ -103,7 +96,7 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // 1. CARICAMENTO INIZIALE: Recupera le ricerche e le impostazioni salvate
+  // 1. CARICAMENTO INIZIALE
   useEffect(() => {
     setSearchTerm(sessionStorage.getItem('pokedex_search') || '');
     setSelectedType(sessionStorage.getItem('pokedex_type') || '');
@@ -138,7 +131,7 @@ export default function Home() {
       });
   }, []);
 
-  // 3. RECUPERO DELLE CARTE (si attiva solo dopo l'inizializzazione)
+  // 3. RECUPERO DELLE CARTE
   useEffect(() => {
     if (!isInitialized) return;
 
@@ -249,17 +242,24 @@ export default function Home() {
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors"
             />
             
+            {/* MENU A TENDINA: TIPI (Aggiornato con Costanti Dinamiche) */}
             <select value={selectedType} onChange={handleTypeChange} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer">
               <option value="">{t.allTypes}</option>
-              <option value="Pokémon">Pokémon</option>
-              <option value="Trainer">{t.trainer}</option>
-              <option value="Energy">{t.energy}</option>
+              {POKEMON_SUPERTYPES.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {uiLang === 'IT' ? type.it : type.en}
+                </option>
+              ))}
             </select>
 
+            {/* MENU A TENDINA: RARITÀ (Aggiornato con Costanti Dinamiche) */}
             <select value={selectedRarity} onChange={handleRarityChange} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition-colors cursor-pointer">
               <option value="">{t.allRarities}</option>
-              <option value="Common">{t.common}</option>
-              <option value="Rare Holo">{t.holo}</option>
+              {POKEMON_RARITIES.map((rarity) => (
+                <option key={rarity.id} value={rarity.id}>
+                  {uiLang === 'IT' ? rarity.it : rarity.en}
+                </option>
+              ))}
             </select>
 
             {/* DROPDOWN RICERCABILE PER I SET */}
